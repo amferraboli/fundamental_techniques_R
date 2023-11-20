@@ -1,0 +1,133 @@
+---
+title: "Practical 1 (Fundamental Techniques in Data Science with R)"
+author: "Amanda Ferraboli"
+date: "2023-11-17"
+output: 
+  html_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+### Loading Packages for the Practical
+
+```{r packages-load} 
+# Exercise 1
+library(dplyr)
+library(readr)
+library(knitr)
+library(kableExtra)
+```
+
+### Code exercises
+
+```{r code-exercises}
+# Exercise 2
+a <- 1 # object a is assigned with value 1
+
+# Exercise 3
+a # print object a to verify if number 1 is returned and, thus, stored
+
+# Exercise 4
+a^2 # print squared a, expected return 1
+
+# Exercise 5
+b <- a + a # object b assigned with a + a
+b == a + a # check if b is indeed equal to a + a, TRUE expected
+
+# Exercise 6
+b^2 # print squared b, expected return 4
+
+# Exercise 7
+b^2 * (a / b) # multiply b squared by a over b
+
+# Exercise 8
+c <- b^2 * (a / b) # assign result of ex. 7 to object c
+
+# Exercise 9
+sqrt(c^b) # square root of c to the power b
+
+# Exercise 10
+sqrt(c^b) * a/(b^6) # result ex.9 multiplied by a over (b to the power 6)
+
+# Exercise 11
+round(sqrt(c^b) * a/(b^6), 
+      digits = 3) # round result of ex. 10 to 3 decimal places
+```
+
+### Built-in functions in R
+```{r function}
+# Exercise 12
+seq(12, 24) # sequence from 12 to and including 24
+
+sum(28:63) # sum from 28 to and including 63
+
+mean(25:82) # mean of numbers from 25 to and including 82
+```
+ 
+### Getting data into R
+```{r reading-data}
+# Exercise 13
+flight_data <- read_csv("../data/flightdata.csv") # reading the data
+flight_data
+```
+
+### Working with the data
+```{r manipulating-data}
+# Exercise 14
+summary(flight_data)
+
+# Exercise 15 - creating new column speed
+flight_data2 <- mutate(flight_data, 
+                       speed = distance / air_time * 60)
+summary(flight_data2$speed)
+
+#testing another way to create the new column without mutate()
+speed_data <- flight_data$distance/flight_data$air_time * 60
+
+flight_data2_alt <- flight_data
+
+flight_data2_alt$speed <- speed_data
+
+summary(flight_data2_alt$speed) #result is the same indeed but code is not so clean
+
+# Exercise 16: select needed variables
+flight_data3 <- select(flight_data2, 
+                       year, 
+                       month, 
+                       day,
+                       speed)
+```
+
+### Loops
+```{r loops}
+# Exercise 17 - for loop
+for(i in seq(1, 12)){
+  
+  # assign third power
+  third_power <- i^3
+  
+  # divide previous number by 13
+  output <- third_power/13
+  
+  print(output)
+}
+```
+
+### Apply statements
+```{r apply-statements}
+# Exercise 18
+# create 8 by 8 matrix with numbers 1 to 64
+matrix_data <- matrix(1:64, nrow = 8, ncol = 8) 
+
+# apply variance function to rows
+apply(matrix_data, MARGIN = 1, FUN = var)
+```
+
+### Saving data to file
+```{r save-data}
+# Exercise 19
+write_csv(flight_data3, "../data/flight_data3.csv")
+```
