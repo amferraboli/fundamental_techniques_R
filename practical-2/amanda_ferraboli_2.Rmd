@@ -1,0 +1,347 @@
+---
+title: "Practical 2 (Fundamental Techniques in Data Science with R)"
+author: "Amanda Ferraboli"
+date: "2023-11-20"
+output: 
+  html_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+### Importing Packages
+```{r packages}
+library(tidyverse)
+library(kableExtra)
+```
+
+### Preparation
+Loading Data: General Social Survey
+```{r loading-data-gss}
+gss_cat <- forcats::gss_cat
+head(gss_cat)
+
+# check variable classes
+str(gss_cat)
+```
+
+### Tibbles
+```{r coerce-tibble}
+as_tibble(gss_cat)
+```
+
+### Working with pipes
+```{r code-with-pipes}
+gss_cat %>%
+  filter(relig == "Protestant") %>%
+  group_by(year, relig) %>%
+  summarize(tvhours = mean(tvhours, na.rm = TRUE))
+```
+
+```{r code-without-pipes}
+# less readable
+summarize(group_by(filter(gss_cat, 
+                          relig == "Protestant"), 
+                   year, 
+                   relig), 
+          tvhours = mean(tvhours, 
+                         na.rm = TRUE)
+          )
+```
+
+### Missing values
+#### Standard missing values
+```{r standard-missing-values}
+gss_cat[1:10,] %>% 
+  kable() %>% 
+  kable_styling(latex_options = "striped")
+
+anyNA(gss_cat)
+
+# Exercise 1. Using is.na() which variable has only standard missing values (NAs) 
+is.na(gss_cat)
+
+# To tell which variable has standard missing values, using the is.na() function, we should pass the data object (gss_cat) as the argument of is.na() and look for where "TRUE" is returned columnwise. 
+# The column 'tvhours' has standard missing values (NAs).
+
+# finding-standard-missings-quicker
+gss_cat %>% 
+  select(everything()) %>% 
+  summarise_all(funs(sum(is.na(.))))
+# easier to find out with the sum per column that 'age' also has NAs.
+```
+
+#### Non-standard missing values
+```{r non-standard-missing-values}
+gss_cat %>% 
+  count(rincome)
+# "No answer", "Don't know", "Refused" and "Not applicable" are responses that can be considered missing values depending on the context.
+
+# Exercise 2. Are there similar responses in the other factor variables? Which ones?
+
+gss_cat %>% 
+  count(marital) # 'marital' has "No answer", which can be considered missing.
+
+gss_cat %>% 
+  count(race) # 'race' has 3 types of answers, "Black", "White" and "Other", none would be considered missing.
+
+
+gss_cat %>% 
+  count(partyid) # 'partyid' has "No answer" and "Don't know", which can be considered missing. 
+
+
+gss_cat %>% 
+  count(relig) # 'relig' has "No answer" and "Don't know", which can be considered missing. Even if the respondent does not have a religion, there is a category "None" for those cases, so "No answer" is really missing.
+
+
+gss_cat %>% 
+  count(denom) # 'denom' has "No answer", "Don't know" and "Not applicable", which can be considered missing. 
+```
+
+### Data transformation
+#### Filtering data
+```{r filtering-data}
+# Exercise 3 - display only married people 
+
+filter(gss_cat, marital == 'Married')
+
+# using the pipe operator - steps are more readable
+gss_cat %>%
+  filter(marital == "Married")
+
+
+# Exercise 4 - display divorced and widowed people
+
+# the question mentions divorced AND widowed people, but the argument translates to an OR (|) condition since a single person cannot be divorced and widowed at the same time on the data set, and the intention is actually to display both groups.
+
+filter(gss_cat, marital == "Divorced" | marital == "Widowed")
+
+gss_cat %>%
+  filter(marital == "Divorced" | marital == "Widowed")
+ 
+```
+
+#### Arranging data
+
+```{r arranging-data}
+# Exercise 5 - reorder the information in the dataframe by the number of tv hours
+
+gss_cat %>%
+  arrange(tvhours)
+# the default of arrange() function is to use the ascending order, if the descending order was needed, the variable could be passed as argument of function desc(): gss_cat %>% arrange(desc(tvhours))
+
+# Exercise 6 - combine arrange() with function desc() to re-order column in descending order
+gss_cat %>%
+  arrange(desc(tvhours))
+```
+
+```{r more-complex-arranging-data}
+# Exercise 7 - filter only married people and arrange them by how much tv they watch
+
+gss_cat %>%
+  filter(marital == "Married") %>%
+  arrange(tvhours)
+
+# Exercise 8 - use arrange() and count() to find what the most common religion is
+
+gss_cat %>%
+  count(relig) %>% # counts the number of occurrence of each religion under generated column 'n'
+  arrange(desc(n)) # sorts the occurrences in descending order to find the greatest (most common)
+
+# good example showing the usefulness of pipes performing more than one operation
+```
+
+#### Summarizing data
+```{r summarizing-data}
+# Exercise 9 - How many hours of tv on average are watched by people of different religions?
+
+gss_cat %>%
+  group_by(relig) %>%
+  summarise(avg_tvhours = mean(tvhours, na.rm = TRUE))
+# If there are any missing values in the group, the mean function returns NA. 'na.rm = TRUE', which means remove the NA values, can be used to drop the missing values and return the expected average by different religions. 
+```
+
+### Strings
+```{r strings}
+# String Concatenation
+
+# Exercise 10 - difference between the two commands
+str_c("x", "y", "z") 
+
+str_c("x", "y", "z", sep = ", ") 
+# the argument 'sep' separates each letter in the string, in this case, by a comma. The default is no separator (sep = ""), seen on the fisrt command.
+
+
+# Subsetting strings
+x <- c("Apple", "Banana", "Pear")
+str_sub(x, 1, 3) # extracts from 1st ('start') to 3rd ('end') character
+
+
+# Regular expressions
+x <- c("apple", "banana", "pear")
+str_view(x, "an")
+
+str_view(x, ".a.") # only one match in banana since the second 'a' does not match the condition, because the n (3rd charcater) was already 'taken'.
+
+
+# Anchors
+#matching the start (^) and end ($) of strings
+x <- c("apple", "banana", "pear")
+
+str_view(x, "^a")
+
+str_view(x, "a$")
+
+x <- c("apple pie", "apple", "apple cake")
+
+str_view(x, "^apple$")
+```
+
+### Factors
+#### Modifying factor order
+```{r factors}
+# Exercise 11 - average age across income levels
+rincome_summary <- gss_cat %>%
+  group_by(rincome) %>%
+  summarise(
+    age = mean(age, na.rm = TRUE),
+    n = n())
+
+rincome_summary %>% 
+  mutate(rincome = fct_reorder(rincome, age)) %>% 
+  ggplot(aes(age, rincome)) +
+    geom_point() +
+    xlab("Average age") +
+    ylab("Income") +
+    theme_minimal()
+
+# Exercise 12 - Do you think using fct_reorder makes sense here? Why/why not?
+
+# Let's plot the same graph without fct_reorder for comparison.
+
+rincome_summary %>% 
+  ggplot(aes(age, rincome)) +
+  geom_point() +
+    xlab("Average age") +
+    ylab("Income") +
+    theme_minimal()
+```
+The plot that does not use the factor reorder is more intuitive and easy to read, since it follows a logical income level on axis Y, making it easier to understand variations in the variable age as the income increases. The variable 'rincome' has has an intuitive ans intrisic order, so using factor reorder is not valuable here.
+
+```{r bar-plots}
+# Exercise 13 - create a bar plot using fct_infreq to reorder levels of the race variable?
+
+gss_cat %>%
+  mutate(race = fct_infreq(race)) %>% 
+  ggplot(aes(race)) +
+    geom_bar(col = "lightblue", fill = "lightblue") +
+    theme_minimal()
+```
+
+Exercise 14 - In the exercises we learned that it is not sensible to reorder factor variables that have a principled order, such as income. Are the remaining categorical variables in gss_cat in a principled order?
+
+We have looked at income which has an intuitive order, the other categorical features in gss_cat are: 'marital' (relationship status), 'race' (race), 'partyid' (party affiliation), 'relig' (religion), and 'denom' (denomination), which do not have a principled or logical order. They could be organized just like the exercises above, by using frequency, or any other pattern of interest.
+
+#### Modifying factor levels
+```{r factor-levels}
+# Exercise 15 - Use ’fct_recode()` to recode “Don’t know” and “No answer” to NA.
+# fct_recode(x, NULL = "Old value").
+
+gss_cat %>%
+  mutate(partyid = fct_recode(partyid,
+    NULL = "No answer",
+    NULL = "Don't know"
+  )) %>%
+  count(partyid)
+```
+
+```{r factor-level-collapse}
+# fct_collapse() is similar to fct_recode but takes a vector of values as an argument.
+
+# Exercise 16 - Can you use fct_collapse() to create three levels for income: “0 to $10,000”, “$10,000 to $20,000”, and NA for the remaining levels?
+
+# The exercise specifies three levels 0-10k, 10-20k, NA. But there are two levels (20-25k) and (25k or more) not included, that could be a in fourth category or be included in a modified second, instead of 10-20k > 10 or more. 
+
+gss_cat %>%
+  mutate(rincome = fct_collapse(rincome,
+    "0 to $10,000" = c("Lt $1000",
+                       "$1000 to 2999",
+                       "$3000 to 3999",
+                       "$4000 to 4999",
+                       "$5000 to 5999",
+                       "$6000 to 6999",
+                       "$7000 to 7999",
+                       "$8000 to 9999"),
+    "$10,000 to $20,000" = c("$10000 - 14999",
+                             "$15000 - 19999",
+                             "$20000 - 24999",
+                             "$25000 or more"),
+    NULL = c("Don't know",
+             "No answer",
+             "Not applicable",
+             "Refused")
+    )) %>%  
+  count(rincome)
+```
+
+```{r level-collapse-fct-lump}
+# Exercise 17 - use fct_lump() to collapse the marital variable
+
+gss_cat %>%
+  mutate(marital = fct_lump(marital)) %>%
+  count(marital, sort = TRUE)
+# the default was helpful, not being necessary to specify an n to set the number of factors to be preserved.
+```
+
+### Creating tables
+``` {r creating-tables}
+gss_sample <- gss_cat[sample(nrow(gss_cat), 10),] # Takes a random sample of 10 observations from the data
+
+# Exercise 18 - create a formatted summary table using the kable package
+
+# kable() generates nicely formatted tables from matrices or data frames in R Markdown
+kable(gss_sample)
+
+
+# Exercise 19 - try using select() alongside kable() to display only the variables “year”, “age”, “race” and “rincome”.
+
+select(gss_sample, year, age, race, rincome) %>%
+  kable()
+```
+
+```{r kable-extra}
+# Exercise 20 - Try changing the font size of the table.
+
+kable(gss_sample) %>% 
+  kable_styling(font_size = 20)
+
+kable(gss_sample) %>% 
+  kable_styling(font_size = 5)
+```
+
+```{r kable-extra-themes}
+# Exercise 21 - Try out using one or more of the themes.
+
+# The kableExtra package also comes with different themes:
+# kable_paper
+# kable_classic
+# kable_classic_2
+# kable_minimal
+# kable_material
+# kable_material_dark
+
+kable(gss_sample) %>% 
+  kable_styling(font_size = 20) %>%
+  kable_classic_2()
+
+kable(gss_sample) %>% 
+  kable_styling(font_size = 20) %>%
+  kable_minimal()
+
+kable(gss_sample) %>% 
+  kable_styling(font_size = 20) %>%
+  kable_material_dark()
+
+```
