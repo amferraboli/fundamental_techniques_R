@@ -1,0 +1,425 @@
+---
+title: "Practical 3 (Fundamental Techniques in Data Science with R)"
+author: "Amanda Ferraboli"
+date: "2023-11-27"
+output: 
+  html_document:
+    toc: yes
+    toc_depth: 4
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+## Introduction
+
+```{r import-packages}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(kableExtra)
+library(weathermetrics)
+```
+
+Let's load the `mpg` dataset from `ggplot2`. `mpg` contains a subset of the fuel economy data. The data frame has 234 rows and 11 variables:
+
+-   manufacturer: manufacturer name
+-   model: model name
+-   displ: engine displacement in litres
+-   year: year of manufacture
+-   cyl: number of cyclinders
+-   trans: type of transmission
+-   drv: type of drive tran (f = front-wheel drive; r = rear-wheel drive; 4 = four-wheel drive)
+-   cty: city miles per gallon
+-   hwy: highway miles per gallon
+-   fl: fuel type
+-   class: type of car
+
+```{r mpg-dataset}
+head(mpg)
+```
+
+The `glimpse()` function can be used to get an overview of the dataframe structure. It is similar to `str()`, but more readable.
+
+```{r mpg-dataset-overview}
+glimpse(mpg)
+```
+
+```{r mpg-dataset-overview-str}
+# for comparison
+str(mpg)
+```
+
+### Question 1
+
+Are there any variables that do not have the class you expect it to?
+
+The categorical variables are listed as character variables <chr>. The best practice is to convert these categorical variables to factor variables. The advantage of using factors are a few, firstly, they can be correctly understood and used is statistical modeling, secondly, as studied during the lectures, some interesting graphics may use factor variables. We should convert these variables and expect the class factor instead.
+
+### Question 2
+
+Make any changes you feel are necessary.
+
+```{r convert-factor}
+# method 1: using lapply()
+
+# find and return chr variables by:
+# 1. use sapply() and is.character to find chr columns and return them as logical (TRUE is chr)
+# 2. filter the original dataframe to select only the chr variables
+# 3. obtain the chr variable names with colnames()
+chr_variables <- colnames(mpg[,sapply(mpg,is.character)])
+
+# convert chr variables to factors
+mpg[chr_variables] <- lapply(mpg[chr_variables], as.factor)
+
+# method 2: using mutate_if(), quicker and much more readable
+mpg <- mpg %>% 
+  mutate_if(is.character, as.factor)
+
+glimpse(mpg)
+```
+
+## Exploratory data analysis
+
+### Non-Graphical EDA
+
+Below `hwy` is summarised by vehicle class, by asking for commonly used summary statistics.
+
+```{r summarise-hwy-by-class}
+mpg %>% 
+  group_by(class) %>%         # by class
+  summarise(min = min(hwy),   # minimum of hwy
+            mean = mean(hwy), # mean
+            sd = sd(hwy),     # standard deviation
+            max = max(hwy),   # maximum
+            n = n())  %>%     # nr of observations
+  kbl() %>%  
+  kable_styling(latex_options = c("striped", "hover"), full_width = F)  
+```
+
+### Question 3
+
+Create a summary of engine displacement by year, including the minimum, maximum, median, and inter quantile range.
+
+```{r summarise-displ-by-year}
+mpg %>% 
+  group_by(year) %>%                    # by year 
+  summarise(min = min(displ),           # minimum of engine disp
+            max = max(displ),           # maximum 
+            Q1 = quantile(displ, 0.25), # 1st quartile
+            median = median(displ),     # median, 2nd quartile
+            Q3 = quantile(displ, 0.75)  # 3rd quartile
+  ) %>%
+  kbl() %>%  
+  kable_styling(latex_options = c("striped", "hover"), full_width = F)  
+```
+
+### Graphical EDA
+
+```{r graphical-eda}
+# testing base R functions plot(), hist(), barplot()
+hist(mpg$displ)
+
+barplot(table(mpg$cyl))
+
+plot(x = mpg$displ, y = mpg$hwy,
+     xlab = "Highway mpg",
+     ylab = "Engine displacement (L)")
+
+```
+
+General ggplot template:
+
+```` r
+```{r}`r ''`
+ggplot(data = <DATA>) + 
+  <GEOM_FUNCTION>(
+     mapping = aes(<MAPPINGS>)) +
+  <COORDINATE_FUNCTION> +
+  <FACET_FUNCTION> +
+  <THEME> 
+```
+````
+
+```{r ggplot-example}
+ggplot(iris) + # Data
+  geom_point(mapping = aes(x = Sepal.Length, # Variable on the x-axis
+                           y = Sepal.Width, # Variable on the y-axis
+                           colour = Species)) + # Legend 
+  labs(x = "Sepal Length",
+       y = "Sepal Width", 
+       title = "Relationship between Sepal Length and Width by Species") +
+  coord_cartesian() + # Default standard for mapping x and y
+  facet_wrap(~Species) + # Splits plot by the species variable
+  theme_bw() # Sets the background theme
+```
+
+#### Visualising distributions of single variables
+
+#### Categorical variables
+
+```{r bar-chart-example}
+ggplot(mpg) +             # data element (mpg)
+  geom_bar(aes(x = drv)) # geom_function (bar plot)
+```
+
+#### Question 4
+
+Create a bar chart that shows a count for the different vehicle classes in mpg.
+
+```{r bar-chart}
+ggplot(mpg) +               # data element (mpg)
+  geom_bar(aes(x = class))  # geom_function (bar plot) with variable 'class' to be shown on axis x.
+```
+
+#### Question 5
+
+Look up different ggplot themes, and apply one to the bar chart you just created.
+
+```{r bar-chart-themed}
+ggplot(mpg) +               # data element (mpg)
+  geom_bar(aes(x = class)) + # geom_function (bar plot) with variable 'class' to be shown on axis x
+  theme_minimal()
+```
+
+```{r bar-chart-themed-2}
+ggplot(mpg) +               # data element (mpg)
+  geom_bar(aes(x = class)) + # geom_function (bar plot) with variable 'class' to be shown on axis x
+  theme_pubclean()
+```
+
+#### Continuous variables
+
+```{r hist-chart-example}
+ggplot(mpg) +
+  geom_histogram(aes(x = cty), 
+                 binwidth = 3)
+```
+
+#### Question 6
+
+What happens when you change the value of binwidth to 1? Does the distribution change?
+
+```{r hist-chart-bin}
+ggplot(mpg) +
+  geom_histogram(aes(x = cty), 
+                 binwidth = 1)
+```
+
+A `binwidth` of 1 is thinner than the one of 3, meaning it corresponds to a shorter interval of values. The distribution does not change significantly, but it becomes less smooth. It also reveals two interesting patterns: first, a peak at around `cty` = 21, almost as high as the interquartile ranges of Q1 = 14 and Q3 = 19, which was not visible in the previous histogram. Secondly, the outliers on the tail become more visible, there are two values of `cty` greater than 30 with very few cases that could be investigated.
+
+```{r density-plot}
+ggplot(mpg, aes(x = cty)) +
+  geom_density(fill = "darkseagreen") 
+```
+
+#### Question 7
+
+Add rug marks to plot above by adding the argument + geom_rug(size = 1, colour = "darkorange")
+
+```{r density-plot-rug}
+ggplot(mpg, aes(x = cty)) +
+  geom_density(fill = "darkseagreen") + 
+  geom_rug(linewidth = 1, 
+           colour = "darkorange")
+```
+
+#### Visualizing the distributions of multiple variables
+
+#### Continuous - Continuous
+
+```{r scatterplots}
+# geom_point plots values of displ on the x axis and values of hwy on the y axis
+ggplot(mpg) +
+  geom_point(aes(x = displ, 
+                 y = hwy))
+```
+
+Adding a third variable as colour.
+
+```{r scatterplot-colour}
+ggplot(mpg) +
+  geom_point(aes(x = displ, 
+                 y = hwy, 
+                 colour = class))
+```
+
+#### Question 8
+
+Repeat the plot above, but mapping the type of transmission to the colour aesthetic. Add a theme and change the titles of the x- and y-axes.
+
+```{r scatterplot-colour-labels}
+# title of axis can be accessed by `labs` (labels)
+ggplot(mpg) +
+  geom_point(aes(x = displ, 
+                 y = hwy, 
+                 colour = trans)) +
+  labs(x = "Engine Displacement in litres",
+       y = "Highway miles per gallon") +
+  theme_minimal()
+```
+
+#### Question 9
+
+Create a scatter plot showing the relationship between engine displacement and city miles, including a line of best fit.
+
+```{r scatterplot-best-fit}
+# title of axis can be accessed by `labs` (labels)
+# aes() must be inside ggplot now, x and y are required by geom_smooth()
+
+ggplot(mpg, aes(x = displ, 
+                 y = cty)) +
+  geom_point() +
+  geom_smooth() +
+  labs(x = "Engine Displacement in litres",
+       y = "City miles per gallon") +
+  theme_minimal()
+```
+
+#### Question 10
+
+Recreate the previous plot, but adding colour = class to the aesthetic mappings. Use method = "lm" and set se = FALSE in geom_smooth(). What difference does this make?
+
+```{r scatterplot-best-fit-lm}
+# title of axis can be accessed by `labs` (labels)
+# aes() must be inside ggplot now, x and y are required by geom_smooth()
+
+ggplot(mpg, aes(x = displ, 
+                y = cty,
+                colour = class)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              se = FALSE) +
+  labs(x = "Engine Displacement in litres",
+       y = "City miles per gallon") +
+  theme_minimal()
+```
+
+There are three modifications. First, adding colour to the aesthetic mappings creates clusters using the `class` variable. As a result, `geom_smooth()` fits separate lines for each of these colour clusters. Second, the `method = "lm"` argument stands for linear model and finds a linear relationship in the data, fitting a linear line, instead of a line full of curves. Third, the argument `se = FALSE` displays no confidence interval around the smooth.
+
+For comparison, let's try plotting without `se` set to `FALSE`.
+
+```{r scatterplot-best-fit-interval}
+
+ggplot(mpg, aes(x = displ, 
+                y = cty,
+                colour = class)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(x = "Engine Displacement in litres",
+       y = "City miles per gallon") +
+  theme_minimal()
+```
+
+The plot is less readable with the display of overlapping confidence intervals.
+
+#### Continuous - Categorical
+
+Boxplots are often used to explore the distribution of a continuous variable broken down by a categorical variable.
+
+```{r boxplot-example}
+ggplot(mpg) +
+  geom_boxplot(aes(x = drv, 
+                   y = hwy))
+```
+
+These features of the boxplot are:
+
+-   Lower horizontal line
+-   Thicker horizontal middle line
+-   Upper horizontal line
+-   Vertical whiskers
+-   Points beyond the whiskers
+
+#### Question 11
+
+What do each of these features tell us?
+
+-   **Lower horizontal line**: represents the 1st quartile, or 25th percentile
+-   **Thicker horizontal middle line**: the median, represents the 2nd quartile, or 50th percentile
+-   **Upper horizontal line**: represents the 3rd quartile, or 75th percentile
+-   **Vertical whiskers**: the interquartile range (IRQ) is the range between Q1 and Q3. The whiskers are generated using the IQR and a measure of flexibility which is generally 1.5. The inferior whisker is defined as (Q1 - 1.5 \* IQR), that is the 25th percentile minus one and a half times the interquartile range. The superior whisker as (Q3 + range \* IQR), the 75th percentile plus one and a half times the interquartile range
+-   **Points beyond the whiskers**: represent outliers.
+
+#### Question 12
+
+Add + coord_flip() to the plot above. What does this do?
+
+```{r boxplot-example-flip}
+ggplot(mpg) +
+  geom_boxplot(aes(x = drv, 
+                   y = hwy)) +
+  coord_flip()
+```
+
+`coord_flip()` flips the x and y axes, making the reading of bloxplot charts horizontal instead of vertical.
+
+#### Question 13
+
+What can you conclude about the highway miles per gallon of each type of drive train from the boxplot above?
+
+Drive train "r" (rear-wheel) has a median of highway miles per gallon of a bit greater than 20. There are no outliers for this type of drive.
+
+"f" stands for drive train type front-wheel. The group has the highest median of all three types of drive trains, a bit less than 30 highway miles per gallon. It also has many outliers, the dots beyond the whiskers, both beyond the maximum and minimum whiskers.
+
+Drive train type "4" has no outliers. The group has the smallest median, making less than 20 highway miles per gallon.
+
+#### Question 14
+
+The variable `trans` contains 10 different transmissions types. These 10 categories can be assumed under 2 broader categories: manual and auto. Use `mutate()` and `fct_collapse()` to collapse the 10 categories of trans to just these 2 categories.
+
+```{r mutate-collapse}
+# find the unique transmission types
+unique(mpg$trans)
+
+mpg <- mpg %>% 
+  mutate(trans = fct_collapse(trans,
+                             "manual" = c("manual(m5)", 
+                                          "manual(m6)"),
+                             "auto" = c("auto(av)", 
+                                        "auto(l3)", 
+                                        "auto(l4)", 
+                                        "auto(l5)", 
+                                        "auto(l6)", 
+                                        "auto(s4)", 
+                                        "auto(s5)", 
+                                        "auto(s6)"))) 
+
+# check if mutation works
+unique(mpg$trans)
+```
+
+#### Question 15
+
+Use the previous example to create a boxplot mapping cty on the y-axis and drv on the x-axis, this time adding the argument colour = trans to aes(). What has changed?
+
+```{r boxplot-colour}
+ggplot(mpg) +
+geom_boxplot(aes(x = drv, 
+                 y = cty,
+                 colour = trans))
+```
+
+Adding a colour variables to the aesthetic of the boxplot splits each drive train into two groups: the manual group and the auto group. Since we originally had 3 drive train groups, the plot now has 6 boxplots. Drive train 'f' remains with outliers, both in `auto` and `manual` trans. Drive train 'r' remains without outliers. Drive train '4' originally had no outliers, but splitting in trans groups revealed outliers in the `auto` group. The median varies between trans groups for all drive train types - `manual` has a higher median of highway miles per gallon in all cases.
+
+#### Facets
+Facets are a way to split your plot into many subplots according to some categorical variable.
+
+To do this, you use the command `facet_wrap()` to facet by a single variable. The first argument to `facet_wrap()` is a formula initiated by ~ and a variable name.
+
+```{r facet-wrap-example}
+ggplot(mpg) + 
+  geom_point(aes(x = displ, 
+                 y = hwy)) + 
+  facet_wrap(~ class, nrow = 2)
+```
+
+It is possible to facet on a combination of two variables using facet_grid(). Like before, the first argument is a formula, but containing two variable names separated by ~.
+
+```{r facet-grid-example}
+ggplot(mpg) + 
+  geom_point(aes(x = displ, 
+                 y = hwy)) + 
+  facet_grid(drv ~ cyl)
+```
