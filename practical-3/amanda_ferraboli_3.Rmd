@@ -159,6 +159,8 @@ ggplot(iris) + # Data
 
 #### Categorical variables
 
+#### Bar chart
+
 ```{r bar-chart-example}
 ggplot(mpg) +             # data element (mpg)
   geom_bar(aes(x = drv)) # geom_function (bar plot)
@@ -191,6 +193,7 @@ ggplot(mpg) +               # data element (mpg)
 
 #### Continuous variables
 
+#### Histogram
 ```{r hist-chart-example}
 ggplot(mpg) +
   geom_histogram(aes(x = cty), 
@@ -208,6 +211,8 @@ ggplot(mpg) +
 ```
 
 A `binwidth` of 1 is thinner than the one of 3, meaning it corresponds to a shorter interval of values. The distribution does not change significantly, but it becomes less smooth. It also reveals two interesting patterns: first, a peak at around `cty` = 21, almost as high as the interquartile ranges of Q1 = 14 and Q3 = 19, which was not visible in the previous histogram. Secondly, the outliers on the tail become more visible, there are two values of `cty` greater than 30 with very few cases that could be investigated.
+
+#### Density plot
 
 ```{r density-plot}
 ggplot(mpg, aes(x = cty)) +
@@ -229,6 +234,7 @@ ggplot(mpg, aes(x = cty)) +
 
 #### Continuous - Continuous
 
+#### Scatterplot
 ```{r scatterplots}
 # geom_point plots values of displ on the x axis and values of hwy on the y axis
 ggplot(mpg) +
@@ -316,6 +322,7 @@ The plot is less readable with the display of overlapping confidence intervals.
 
 #### Continuous - Categorical
 
+#### Boxplot
 Boxplots are often used to explore the distribution of a continuous variable broken down by a categorical variable.
 
 ```{r boxplot-example}
