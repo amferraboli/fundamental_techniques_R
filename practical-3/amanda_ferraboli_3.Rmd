@@ -404,9 +404,10 @@ geom_boxplot(aes(x = drv,
 Adding a colour variables to the aesthetic of the boxplot splits each drive train into two groups: the manual group and the auto group. Since we originally had 3 drive train groups, the plot now has 6 boxplots. Drive train 'f' remains with outliers, both in `auto` and `manual` trans. Drive train 'r' remains without outliers. Drive train '4' originally had no outliers, but splitting in trans groups revealed outliers in the `auto` group. The median varies between trans groups for all drive train types - `manual` has a higher median of highway miles per gallon in all cases.
 
 #### Facets
+
 Facets are a way to split your plot into many subplots according to some categorical variable.
 
-To do this, you use the command `facet_wrap()` to facet by a single variable. The first argument to `facet_wrap()` is a formula initiated by ~ and a variable name.
+To do this, you use the command `facet_wrap()` to facet by a single variable. The first argument to `facet_wrap()` is a formula initiated by \~ and a variable name.
 
 ```{r facet-wrap-example}
 ggplot(mpg) + 
@@ -415,11 +416,154 @@ ggplot(mpg) +
   facet_wrap(~ class, nrow = 2)
 ```
 
-It is possible to facet on a combination of two variables using facet_grid(). Like before, the first argument is a formula, but containing two variable names separated by ~.
+Let's plot the previous example without the facet for a fresher visual comparison.
+
+```{r without-facet-wrap}
+ggplot(mpg) + 
+  geom_point(aes(x = displ, 
+                 y = hwy))  
+```
+
+It is possible to facet on a combination of two variables using facet_grid(). Like before, the first argument is a formula, but containing two variable names separated by \~.
 
 ```{r facet-grid-example}
 ggplot(mpg) + 
   geom_point(aes(x = displ, 
                  y = hwy)) + 
   facet_grid(drv ~ cyl)
+```
+
+#### Question 16
+
+Notice that there are empty cells in the bottom left facets above. What do you think this means?
+
+It means there are no data points in the specific combination of the two categorical variables used in the facet grid, that is to say, there are no drive trains of `r` type (r = rear wheel drive) with 4 cylinders, nor with 5 cylinders. There are also empty cells in the facets that represents the combination of `drv` = 4 (4wd) and 5 cylinders.
+
+#### Question 17
+
+Create a scatter plot of displ and hwy, faceting by the of manufacturer name.
+
+```{r facet-wrap-manufacturer}
+ggplot(mpg) + 
+  geom_point(aes(x = displ, 
+                 y = hwy)) + 
+  facet_wrap(~ manufacturer, nrow = 2)
+```
+
+Using `nrow` = 2 consolidates all facets in two rows. This is not a great choice for two reasons. First, there are a total of 15 different manufacturers, an odd number, making the layot of the facets asymmetric. Second, the plots and crushed to fit the display in only two lines, making them less readable. A nice choice is to use `nrow` = 3, a number by which 15 is divisible, generating a better layout and giving more horizontal space for each plot.
+
+```{r facet-wrap-manufacturer-nrow}
+ggplot(mpg) + 
+  geom_point(aes(x = displ, 
+                 y = hwy)) + 
+  facet_wrap(~ manufacturer, nrow = 3)
+```
+
+#### Question 18
+
+Change the names on the axes to be more informative.
+
+```{r facet-wrap-manufacturer-labs}
+ggplot(mpg) + 
+  geom_point(aes(x = displ, 
+                 y = hwy)) + 
+  labs(x = "Engine displacement, in litres", 
+       y = "Highway miles per gallon") +
+  facet_wrap(~ manufacturer, nrow = 3)
+```
+
+#### Arranging multiple plots
+
+If you have multiple plots that you want to arrange on the same page, you can use ggarrange() from the ggpubr package.The first step is creating some plots.
+
+#### Question 19
+
+Create the following three plots: A. A bar plot showing counts of class, assigning class to the fill aesthetic.
+
+B. A box plot of class by hwy per gallon, assigning class to the colour aesthetic.
+
+C. A jittered scatterplot of hwy and cty miles per gallon, assigning class to the colour aesthetic.
+
+Remember to save each plot as an object to be called upon later.
+
+```{r multiple-plots}
+# plot A - the `fill` argument attributes a color to each class
+plot_a <- ggplot(mpg) +
+          geom_bar(aes(x = class, fill = class)) +
+          labs(x = "Type of car",
+               y = "Count") +
+          theme_light()
+
+# plot B
+plot_b <- ggplot(mpg) +
+          geom_boxplot(aes(x = class,
+                           y = hwy,
+                           colour = class)) +
+          labs(x = "Type of car",
+               y = "Highway miles per gallon") +
+          theme_light()
+
+# plot C
+# The jitter geom is a convenient shortcut for geom_point(position = "jitter"). It adds a small amount of random variation to the location of each point, and is a useful way of handling overplotting caused by discreteness in smaller datasets.
+
+plot_c <- ggplot(mpg) +
+          geom_jitter(aes(x = hwy,
+                              y = cty,
+                              colour = class)) +
+          labs(x = "Highway miles per gallon",
+               y = "City miles per gallon") +
+          theme_light()
+```
+
+D. Use ggarrange() to arrange the three plots in one space. ggarrange() takes the plots as arguments as well as ncol or nrow to customise the arrangement
+
+```{r ggarange}
+ggarrange(plot_a,
+          plot_b,
+          plot_c)
+```
+
+The arranging of the plot can be improved by flipping the coordinates so that the names of the classes in the first two plots are readable. Let's rewrite the code for A and B adding this property.
+
+```{r multiple-plots-coord-flip}
+# plot A - the `fill` argument attributes a color to each class
+plot_a_flip <- ggplot(mpg) +
+          geom_bar(aes(x = class, fill = class)) +
+          labs(x = "Type of car",
+               y = "Count") +
+          coord_flip() +
+          theme_light()
+
+# plot B
+plot_b_flip <- ggplot(mpg) +
+          geom_boxplot(aes(x = class,
+                           y = hwy,
+                           colour = class)) +
+          labs(x = "Type of car",
+               y = "Highway miles per gallon") +
+          coord_flip() +
+          theme_light()
+
+```
+
+```{r ggarange-flipped}
+ggarrange(plot_a_flip,
+          plot_b_flip,
+          plot_c,
+          ncol = 2, 
+          nrow = 2)
+```
+
+E. Repeat the code from the previous question, adding common.legend = TRUE and legend = "bottom" to ggarrange().
+
+`common.legend = TRUE` avoids repeating class legend and makes the figure more readable.
+
+```{r ggarange-flipped-legend}
+ggarrange(plot_a_flip,
+          plot_b_flip,
+          plot_c,
+          ncol = 2, 
+          nrow = 2,
+          common.legend = TRUE,
+          legend = "bottom")
 ```
