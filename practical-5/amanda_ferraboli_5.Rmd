@@ -1,0 +1,187 @@
+---
+title: "Practical 5 - Assumptions of Linear Regression (Fundamental Techniques in Data Science with R)"
+author: "Amanda Ferraboli"
+date: "2023-12-11"
+output: 
+  html_document:
+    toc: yes
+    toc_depth: 4
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+## Introduction
+In this practical, the assumptions of the linear regression model will be discussed. You will practice with checking the different assumptions, and practice with accounting for some of the assumptions with additional steps.
+
+```{r packages}
+library(magrittr)
+library(ggplot2) 
+library(regclass)
+library(MASS) 
+```
+
+## Data set: Loading & Inspection
+For the first part of this practical, a data set from a fish market is used. You can find the dataset in the surfdrive folder. The variables in this fish data set are:
+
+- Species of the fish
+- Weight of the fish in grams
+- Vertical, length of the fish in cm
+- Diagonal length of the fish in cm
+- Cross length of the fish in cm
+- Height of the fish in cm
+- Diagonal width of the fish in cm
+
+Download the dataset from the Surfdrive folder, store it in the folder of your Rproject for this practical and open it in R. Also, adjust the column names according to the code below to make them a bit more intuitive.
+
+```{r fish-dataset}
+# Read in the data set
+data_fish <- read.csv("Fish.csv")
+
+colnames(data_fish) <- c("species", "weight", "vertical_length", "diagonal_length", "cross_length", "height", "diagonal_width")
+
+# Check the dataset with the 'head' function to have a general impression.
+data_fish %>%
+  head()
+```
+
+## Model assumptions
+
+## Linearity
+With the assumption of linearity, it is assumed that the relation between the dependent and independent variables is (more or less) linear. You can check this by generating a scatterplot using a predictor variable and outcome variable of the regression model.
+
+## Question 1
+Check whether there is a linear relation between the variables vertical length and the cross length.
+
+```{r linearity-scatterplot}
+ggplot(data = data_fish, 
+       aes(x = vertical_length,
+           y = cross_length)) +
+  geom_point() +
+  geom_smooth() + 
+  labs(x = "Vertical length (cm)",
+       y = "Cross length (cm)",
+       title = "Relation between Vertical length and Cross length") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+It is possible to see a clear linear relation between vertical length and cross length.
+
+## Question 2
+Next check the relation between weight and height.
+
+```{r linearity-scatterplot2}
+ggplot(data = data_fish, 
+       aes(x = weight,
+           y = height)) +
+  geom_point() +
+  geom_smooth() + 
+  labs(x = "Weight (grams)",
+       y = "Height (cm)",
+       title = "Relation between Weight and Heightz") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+N=The relation between variables weight and height is not linear.
+
+## Question 3
+Describe both plots. What differences do you see?
+
+The first plot denotes the relation between vertical length in cm and cross length also in cm. The geom_smooth() element added to ggplot help us visualize the pattern, which is more or less linear in this case. The second plot shows the relation between height in cm and weight in grams. Here the geometry added to denote the pattern is not linear. It is possible to see a trend of the height growing as the weight also grows until around an x = 1000 and then, as the weight continues to increase, the height decreases. 
+
+
+
+When a non-linear relation is present, you can either choose another model to use, or transform the predictor before adding it to the model, for example using a log-transformation. Applying a transformation, however, will not always solve the problem, and makes interpretation of the model less intuitive.
+
+## Question 4
+Apply a log-transformation to the weight variable.
+
+```{r log-transformation}
+data_fish$weight_log <- log(data_fish$weight)
+# check how the new column looks like with head()
+head(data_fish)
+```
+
+## Question 5
+Plot the relation between length and weight again, but now including the transformed variable.
+
+```{r linearity-scatterplot-weight-log}
+ggplot(data = data_fish, 
+       aes(x = weight_log,
+           y = height)) +
+  geom_point() +
+  geom_smooth() + 
+  labs(x = "Weight (grams)",
+       y = "Height (cm)",
+       title = "Relation between Transformed Weight and Height") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Question 6
+Describe if the transformation improved the linear relation.
+
+Applying a log transformation to the variable weight improved the linear relation with variable height. The previous plot, from question 2, is a lot less linear than the plot above from question 5. 
+
+## Predictor matrix full rank
+
+This assumption states that:
+there need to be more observations than predictors (n > P).
+no predictor can be a linear combination of other predictors; predictors cannot have a very high correlation (multicollinearity).
+
+## Question 7
+Specify a linear model with weight as outcome variable using all other variables in the dataset as predictors. Save this model as model_fish1. Calculate VIF values for this model.
+
+```{r linear-model}
+model_fish1 <- lm(weight ~ species + vertical_length + diagonal_length + cross_length + height + diagonal_width, data = data_fish)
+
+VIF(model_fish1)
+```
+## Question 8
+Check the VIF scores. If VIF scores exceed a score of 10, give substantial explanation why the VIF scores are this high.
+
+Considering as a rule of thumb the VIF with a limit of 10, there are three variables with a significantly higher value, they are: `vertical_lenght`, `diagonal_lenght` and `cross_lenght`. The VIF, according to its own function description, helps us assess when a predictor is more related to the other predictors than it is to the response. It works by building an auxiliary regression, with the x variable in question as the outcome, estimating an R2 and imputing this R2 in the VIF formula (1/(1-R2)). The greater the R2, the better the variable is explained by the other predictor variables and the higher the VIF. For example, the VIF of 10 results from a R2 of 0.9, meaning 90% of the variable variability is captured by the other variables. This is precisely the case of the three variables: all are length measures and are expected to be correlated.
+
+## Question 9
+What adjustments can be made to the model to account for multicollinearity in this case?
+
+The easiest solution is to include only one of the variables measuring length. Another technique applied in cases of data presenting multicollinearity in the use of principal component regression, based on principal component analysis (PCA).
+
+## Question 10
+Run a new model which only includes one of the three length variables and call it model_fish2. Describe if there is an improvement.
+
+```{r linear-model-2}
+model_fish2 <- lm(weight ~ species + diagonal_length + height + diagonal_width, data = data_fish)
+
+VIF(model_fish2)
+```
+`diagonal_length` was the variable with the highest VIF, that means the auxiliary regression created with `diagonal_length` as the outcome variable and the other variables as predictor had the highest R2, meaning also that `diagonal_length` is the variable that best captures the variance of the other length variables. 
+The VIFs of the new model with only one length variable included is clearly lower, and all below 10. Still, three of the four variables have VIF values between 5 and 10, which according to the function documentation, can still be considered large.
+
+## Question 11
+What happens with the regression model when there are more predictors than observations?
+
+Let's test this in practice by using 6 predictors in the fish data to predict the weight, but only in a sample of 5 observations. (n > P is violated).
+
+```{r linear-model-n-smaller-p}
+# select rows with different species for the model to be able to use contrasts on the factor variable. 2 or more levels are needed.
+sample_data <- data_fish[c(1, 2, 56, 72, 73),]
+
+model_fish_sample <- lm(weight ~ species + vertical_length + diagonal_length + cross_length + height + diagonal_width, data = sample_data)
+
+model_fish_sample
+```
+The model above was fitted in 5 rows of observations, using 6 predictor (with Species actually becoming more than one predictor as a Factor variable is converted to dummy variable). As seen in the model results, the parameters cannot be estimated when the number of predictors is greater than the number of observations and are represented by `NA`. 
+
+## Exogenous predictors
+For this assumption, the expected value of the errors (mean of the errors) must be 0. Furthermore, The errors must be independent of the predictors.
+
+## Question 12
+What is the possible consequence of not meeting this assumption?
+
+
+
+
+
+
