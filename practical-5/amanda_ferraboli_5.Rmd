@@ -13,6 +13,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
 ## Introduction
+
 In this practical, the assumptions of the linear regression model will be discussed. You will practice with checking the different assumptions, and practice with accounting for some of the assumptions with additional steps.
 
 ```{r packages}
@@ -23,15 +24,16 @@ library(MASS)
 ```
 
 ## Data set: Loading & Inspection
+
 For the first part of this practical, a data set from a fish market is used. You can find the dataset in the surfdrive folder. The variables in this fish data set are:
 
-- Species of the fish
-- Weight of the fish in grams
-- Vertical, length of the fish in cm
-- Diagonal length of the fish in cm
-- Cross length of the fish in cm
-- Height of the fish in cm
-- Diagonal width of the fish in cm
+-   Species of the fish
+-   Weight of the fish in grams
+-   Vertical, length of the fish in cm
+-   Diagonal length of the fish in cm
+-   Cross length of the fish in cm
+-   Height of the fish in cm
+-   Diagonal width of the fish in cm
 
 Download the dataset from the Surfdrive folder, store it in the folder of your Rproject for this practical and open it in R. Also, adjust the column names according to the code below to make them a bit more intuitive.
 
@@ -49,9 +51,11 @@ data_fish %>%
 ## Model assumptions
 
 ### Linearity
+
 With the assumption of linearity, it is assumed that the relation between the dependent and independent variables is (more or less) linear. You can check this by generating a scatterplot using a predictor variable and outcome variable of the regression model.
 
 #### Question 1
+
 Check whether there is a linear relation between the variables vertical length and the cross length.
 
 ```{r linearity-scatterplot}
@@ -66,9 +70,11 @@ ggplot(data = data_fish,
   theme_bw() + 
   theme(plot.title = element_text(hjust = 0.5))
 ```
+
 It is possible to see a clear linear relation between vertical length and cross length.
 
 #### Question 2
+
 Next check the relation between weight and height.
 
 ```{r linearity-scatterplot2}
@@ -83,18 +89,19 @@ ggplot(data = data_fish,
   theme_bw() + 
   theme(plot.title = element_text(hjust = 0.5))
 ```
+
 N=The relation between variables weight and height is not linear.
 
 #### Question 3
+
 Describe both plots. What differences do you see?
 
-The first plot denotes the relation between vertical length in cm and cross length also in cm. The geom_smooth() element added to ggplot help us visualize the pattern, which is more or less linear in this case. The second plot shows the relation between height in cm and weight in grams. Here the geometry added to denote the pattern is not linear. It is possible to see a trend of the height growing as the weight also grows until around an x = 1000 and then, as the weight continues to increase, the height decreases. 
-
-
+The first plot denotes the relation between vertical length in cm and cross length also in cm. The geom_smooth() element added to ggplot help us visualize the pattern, which is more or less linear in this case. The second plot shows the relation between height in cm and weight in grams. Here the geometry added to denote the pattern is not linear. It is possible to see a trend of the height growing as the weight also grows until around an x = 1000 and then, as the weight continues to increase, the height decreases.
 
 When a non-linear relation is present, you can either choose another model to use, or transform the predictor before adding it to the model, for example using a log-transformation. Applying a transformation, however, will not always solve the problem, and makes interpretation of the model less intuitive.
 
 #### Question 4
+
 Apply a log-transformation to the weight variable.
 
 ```{r log-transformation}
@@ -104,6 +111,7 @@ head(data_fish)
 ```
 
 #### Question 5
+
 Plot the relation between length and weight again, but now including the transformed variable.
 
 ```{r linearity-scatterplot-weight-log}
@@ -120,17 +128,17 @@ ggplot(data = data_fish,
 ```
 
 #### Question 6
+
 Describe if the transformation improved the linear relation.
 
-Applying a log transformation to the variable weight improved the linear relation with variable height. The previous plot, from question 2, is a lot less linear than the plot above from question 5. 
+Applying a log transformation to the variable weight improved the linear relation with variable height. The previous plot, from question 2, is a lot less linear than the plot above from question 5.
 
 ### Predictor matrix full rank
 
-This assumption states that:
-there need to be more observations than predictors (n > P).
-no predictor can be a linear combination of other predictors; predictors cannot have a very high correlation (multicollinearity).
+This assumption states that: there need to be more observations than predictors (n \> P). no predictor can be a linear combination of other predictors; predictors cannot have a very high correlation (multicollinearity).
 
 #### Question 7
+
 Specify a linear model with weight as outcome variable using all other variables in the dataset as predictors. Save this model as model_fish1. Calculate VIF values for this model.
 
 ```{r linear-model}
@@ -138,17 +146,21 @@ model_fish1 <- lm(weight ~ species + vertical_length + diagonal_length + cross_l
 
 VIF(model_fish1)
 ```
+
 #### Question 8
+
 Check the VIF scores. If VIF scores exceed a score of 10, give substantial explanation why the VIF scores are this high.
 
 Considering as a rule of thumb the VIF with a limit of 10, there are three variables with a significantly higher value, they are: `vertical_lenght`, `diagonal_lenght` and `cross_lenght`. The VIF, according to its own function description, helps us assess when a predictor is more related to the other predictors than it is to the response. It works by building an auxiliary regression, with the x variable in question as the outcome, estimating an R2 and imputing this R2 in the VIF formula (1/(1-R2)). The greater the R2, the better the variable is explained by the other predictor variables and the higher the VIF. For example, the VIF of 10 results from a R2 of 0.9, meaning 90% of the variable variability is captured by the other variables. This is precisely the case of the three variables: all are length measures and are expected to be correlated.
 
 #### Question 9
+
 What adjustments can be made to the model to account for multicollinearity in this case?
 
 The easiest solution is to include only one of the variables measuring length. Another technique applied in cases of data presenting multicollinearity in the use of principal component regression, based on principal component analysis (PCA).
 
 #### Question 10
+
 Run a new model which only includes one of the three length variables and call it model_fish2. Describe if there is an improvement.
 
 ```{r linear-model-2}
@@ -156,13 +168,14 @@ model_fish2 <- lm(weight ~ species + diagonal_length + height + diagonal_width, 
 
 VIF(model_fish2)
 ```
-`diagonal_length` was the variable with the highest VIF, that means the auxiliary regression created with `diagonal_length` as the outcome variable and the other variables as predictor had the highest R2, meaning also that `diagonal_length` is the variable that best captures the variance of the other length variables. 
-The VIFs of the new model with only one length variable included is clearly lower, and all below 10. Still, three of the four variables have VIF values between 5 and 10, which according to the function documentation, can still be considered large.
+
+`diagonal_length` was the variable with the highest VIF, that means the auxiliary regression created with `diagonal_length` as the outcome variable and the other variables as predictor had the highest R2, meaning also that `diagonal_length` is the variable that best captures the variance of the other length variables. The VIFs of the new model with only one length variable included is clearly lower, and all below 10. Still, three of the four variables have VIF values between 5 and 10, which according to the function documentation, can still be considered large.
 
 #### Question 11
+
 What happens with the regression model when there are more predictors than observations?
 
-Let's test this in practice by using 6 predictors in the fish data to predict the weight, but only in a sample of 5 observations. (n > P is violated).
+Let's test this in practice by using 6 predictors in the fish data to predict the weight, but only in a sample of 5 observations. (n \> P is violated).
 
 ```{r linear-model-n-smaller-p}
 # select rows with different species for the model to be able to use contrasts on the factor variable. 2 or more levels are needed.
@@ -172,20 +185,25 @@ model_fish_sample <- lm(weight ~ species + vertical_length + diagonal_length + c
 
 model_fish_sample
 ```
-The model above was fitted in 5 rows of observations, using 6 predictor (with Species actually becoming more than one predictor as a Factor variable is converted to dummy variable). As seen in the model results, the parameters cannot be estimated when the number of predictors is greater than the number of observations and are represented by `NA`. 
+
+The model above was fitted in 5 rows of observations, using 6 predictor (with Species actually becoming more than one predictor as a Factor variable is converted to dummy variable). As seen in the model results, the parameters cannot be estimated when the number of predictors is greater than the number of observations and are represented by `NA`.
 
 ### Exogenous predictors
+
 For this assumption, the expected value of the errors (mean of the errors) must be 0. Furthermore, the errors must be independent of the predictors.
 
 #### Question 12
+
 What is the possible consequence of not meeting this assumption?
 
 A predictor is called exogenous when it is not correlated to the error term. The standard assumption for regression analysis is that predictor variables are independent from the error and the dependent variable - since the dependent variable depends on the error it means the predictor variables are assumed to be independent from the dependent variable and thus from the error. An endogenous variable, on the other hand, is a predictor which is correlated to the error term. When a variable is not exogenous, the problem of endogeneity arises, which result in the estimated regression coefficients being biased and inconsistent.
 
 ### Constant, finite error variance
-This assumptions is also called ‘the assumption of homoscedasticity’. It states that the variance of the error terms should be constant over all levels of the predictors. This can be checked by plotting the residuals against the fitted values. These plots can be obtained by simply taking the first plot of a specified model, plot(model_x).
+
+This assumptions is also called 'the assumption of homoscedasticity'. It states that the variance of the error terms should be constant over all levels of the predictors. This can be checked by plotting the residuals against the fitted values. These plots can be obtained by simply taking the first plot of a specified model, plot(model_x).
 
 #### Question 13
+
 Create a residual vs fitted values plot for model_fish1, which is the first plot generated by the plot() function.
 
 ```{r residual-vs-fitted}
@@ -193,7 +211,9 @@ plot(model_fish1, 1)
 ```
 
 #### Question 14
+
 Load in the iris data, and specify a model where sepal length is predicted by all other variables and save this as model_iris1.
+
 ```{r model-iris}
 iris_data <- iris
 model_iris1 <- lm(Sepal.Length ~ ., 
@@ -201,44 +221,51 @@ model_iris1 <- lm(Sepal.Length ~ .,
 ```
 
 #### Question 15
+
 Create a residual vs fitted plot for this model as well.
+
 ```{r residual-vs-fitted-iris}
 plot(model_iris1, 1)
 ```
 
 #### Question 16
+
 Discuss both plots and indicate whether the assumption is met.
 
-The first plot of residuals vs fitted values on the `model_fish1` indicates a non-constant variance of the residuals which can be visually followed by the red line. This line is far from de ideally constant dotted line. In this plot, the residuals are closer to zero for central fitted values but increase significantly for the smaller and higher fitted values. Also, it is clear that the variance for lower fitted values is smaller than for higher values, that is to say, the point with lower fitted values are closer to each other than the higher fitted values. This pattern of non-constant deviations of predicted values is called heteroscedasticity. For the fish model, the assumption is, thus, not met.
-For the iris model, on the other hand, the red line is very constant through all values of the x axis (fitted values). The point also present a constant variance. Here, the assumption of homoscedasticity is met.
+The first plot of residuals vs fitted values on the `model_fish1` indicates a non-constant variance of the residuals which can be visually followed by the red line. This line is far from de ideally constant dotted line. In this plot, the residuals are closer to zero for central fitted values but increase significantly for the smaller and higher fitted values. Also, it is clear that the variance for lower fitted values is smaller than for higher values, that is to say, the point with lower fitted values are closer to each other than the higher fitted values. This pattern of non-constant deviations of predicted values is called heteroscedasticity. For the fish model, the assumption is, thus, not met. For the iris model, on the other hand, the red line is very constant through all values of the x axis (fitted values). The point also present a constant variance. Here, the assumption of homoscedasticity is met.
 
 #### Question 17
+
 Discuss what the consequence would be if this assumption is violated.
 
-Heteroscedasticity leads to bias in standard errors, usually underestimating its magnitudes, that is to say, estimating lower standard errors than what they would truly be. In these cases the confidence intervals, for example, would be narrower, biasing the uncertainty around the fitted values. Non-constant error variance would not impact the estimated coefficients of the model. Still, cases of severe heterosdasticity are recommended to be treated.  
+Heteroscedasticity leads to bias in standard errors, usually underestimating its magnitudes, that is to say, estimating lower standard errors than what they would truly be. In these cases the confidence intervals, for example, would be narrower, biasing the uncertainty around the fitted values. Non-constant error variance would not impact the estimated coefficients of the model. Still, cases of severe heterosdasticity are recommended to be treated.
 
 ### Independent errors
+
 This assumption states that error terms should have no correlation. Dependence of the errors can result from multiple things. First, there is a possible dependence in the error terms when there is serial dependence, for example because the data contains variables that are measured over time. Another reason can be when there is a cluster structure in the data, for example students in classes in schools.
 
 #### Question 18
+
 How can both causes of correlated error terms be detected, and what can be done to solve the problem?
 
-For the first cause, serial dependence, there are two relevant tools to raise suspicion and detect error correlation. First, if the data is longitudinal, that is to say, repeated data collections of the same subjects over a period of time, it is an indicative of attention. Then, it is possible to test for serial dependence in these cases using the autocorrelation of residuals. To solve the problem of serial dependence, it would required the addition of a missing temporal component absorbed by the error or a different model has to be used, specifically some kind of time series approach. 
-For the second cause, clustering, when there is sufficient theoretical suspicion about the existence of clustered data (groups), the clustering variable can be tested with intra class correlation (ICC). I mention theoretical suspicion because we need to know the clustering variable to test for it.  If the result of the ICC is high, the clustered data explains a great part of the variance of the outcome variable, and it has to be treated with multilevel modeling or with a cluster-robust variance estimator like `vcovCL` (Clustered Covariance Matrix Estimation) from the sandwich package, used to adjust inference when errors are correlated within clusters.
+For the first cause, serial dependence, there are two relevant tools to raise suspicion and detect error correlation. First, if the data is longitudinal, that is to say, repeated data collections of the same subjects over a period of time, it is an indicative of attention. Then, it is possible to test for serial dependence in these cases using the autocorrelation of residuals. To solve the problem of serial dependence, it would required the addition of a missing temporal component absorbed by the error or a different model has to be used, specifically some kind of time series approach. For the second cause, clustering, when there is sufficient theoretical suspicion about the existence of clustered data (groups), the clustering variable can be tested with intra class correlation (ICC). I mention theoretical suspicion because we need to know the clustering variable to test for it. If the result of the ICC is high, the clustered data explains a great part of the variance of the outcome variable, and it has to be treated with multilevel modeling or with a cluster-robust variance estimator like `vcovCL` (Clustered Covariance Matrix Estimation) from the sandwich package, used to adjust inference when errors are correlated within clusters.
 
 ### Normally distributed errors
+
 This assumption states that errors should be roughly normally distributed. Like the assumption of homoscedasticity, this can be checked by model plots, provided by R.
 
 #### Question 19
-Create a QQ plot for model_iris1, which is the second plot generated by the plot() function. Indicate whether the assumption is met.
 
+Create a QQ plot for model_iris1, which is the second plot generated by the plot() function. Indicate whether the assumption is met.
 
 ```{r qq-plot-iris}
 plot(model_iris1, 2)
 ```
+
 The Q-Q plot stands for quantile-quantile plot, it is a scatterplot comparing two distributions. In the case of the assumption, the distributions being compared are the error distribution and the theoretical perfect normal distribution. The errors of the iris model follow the dotted line relatively well, with small deviations on the tails, and it is fair to say the assumption of normally distributed errors is met.
 
 #### Question 20
+
 Create a new model using the fish data, where diagonal_width is predicted by cross_length, and store the model as model_fish3.
 
 ```{r model_fish3}
@@ -247,17 +274,203 @@ model_fish3 <- lm(diagonal_width ~ cross_length,
 ```
 
 #### Question 21
+
 Create a QQ plot for model_fish3.
+
 ```{r qq-plot-fish3}
 plot(model_fish3, 2)
 ```
 
 #### Question 22
+
 Interpret the two plots. Is the assumption met in both cases?
 
+The Q-Q plot stands for quantile-quantile plot, it is a scatterplot comparing two distributions. In the case of the assumption, the distributions being compared are the error distribution and the theoretical perfect normal distribution.
+
+The first plot shows the distribution of residuals for the iris model against theoretical quantiles and they follow the dotted ideal line well, and it is fair to say the assumption of normally distributed errors is met.
+
+The second plot shows the distribution of errors for the fish model 3. It is possible to see that both the tails deviate significantly from the line. In this case, the assumption of normally distributed errors is violated.
+
+
 #### Question 23
+
 In what cases is it problematic that the assumption is not met? And in what cases is it no problem?
+
+When the assumption of normally distributed error is not met, it is good practice to check for the sample size. For smaller samples (n < 30) it is more problematic; for greater samples, on the other hand, the central limit theorem (CLT) accounts for normal sampling distribution for the coefficients, regardless of the error distribution.  
+It is important to highlight that when it comes to prediction intervals, normally distributed errors are required.
 
 ## Influential observations
 
 ### Outliers
+Outliers are observations that show extreme outcomes compared to the other data, or observations with outcome values that fit the model very badly. Outliers can be detected by inspecting the externally studentized residuals.
+
+#### Question 24
+Make a plot of studentized residuals by using the functions rstudent and plot for `model_fish1`. What do you conclude?
+
+```{r outlier-fish1}
+rstudent(model_fish1) %>% 
+  plot()
+```
+
+It is possible to visualize one studentized error value that looks like an outlier at index approximately to 75.
+
+#### Question 25
+Make a plot of studentized residuals for model_iris1.
+
+```{r outlier-iris1}
+rstudent(model_iris1) %>% 
+  plot()
+```
+
+No significant outcome outlier detected.
+
+#### Question 26
+Store the dataset Animals from the MASS package. Define a regression model where animals’ body weight is predicted by brain weight and store it as model_animals1.
+
+```{r animal-model}
+animals_data <- Animals
+
+model_animals1 <- lm(body ~ brain,
+                     data = animals_data)
+model_animals1
+```
+
+#### Question 27
+Make a plot of the studentized residuals for model_animals1.
+
+```{r outlier-animals1}
+rstudent(model_animals1) %>% 
+  plot()
+```
+
+There is one clear extreme value of error at index approximately 26.
+
+```{r investigate-outlier}
+animals_data[c(15, 25, 26, 27),]
+```
+Index 26 corresponds to the animal Brachiosaurus, this observation has an outcome values that fit the model very badly. The brain of the Brachiosaurus is relatively light for its body weight. The African elephant, in comparison with the brachiosaurus, has a smaller body weight but much heavier brain. It is probably not a measure error, rather, one hypothesis for this divergence is evolution, this dinosaur is a much older animal compared to most of the other animals of the dataset and extremely heavy, even heavier than the other dinossaurs in the data, as a result its data does not accomodate well to the pattern.
+
+### High-leverage observations
+High-leverage observations are observations with extreme predictor values. To detect these observations, we look at their leverage values. These values can be summarized in a leverage plot.
+
+#### Question 28
+For the model specified under model_animals1, create a leverage plot by plotting the hatvalues() of the model.
+
+```{r leverage-plot-animals}
+hatvalues(model_animals1) %>% 
+  plot()
+```
+
+Two point, precisely on index approximately 7 and 15, have high leverage values. It means that in these two specific observations, the brain weight (predictor) had extreme values.
+
+```{r investigate-leverage-extremes}
+animals_data[c(7,15),]
+```
+These observations report on Asian elephant and African elephant, so apparently the data is not measured incorrectly, the values are truly big.
+
+### Influence on the model
+
+Both outliers and observations with high leverage are not necessarily a problem. Cases that are both, however, seem to form more of a problem. These cases can influence the model heavily and can therefore be problematic.
+
+Influence measures come in two sorts: Cook’s distance checks for influential observations, while DFBETAS check for influential, and possible problematic, observations per regression coefficients.
+
+#### Question 29
+For model_animals1, check Cooks distance by plotting the cooks.distance of the model.
+
+```{r cook-animals}
+cooks.distance(model_animals1) %>%
+  plot()
+```
+
+#### Question 30
+For model_animals1, check the DFBETAS by using the function dfbetas.
+```{r dfbetas-animals}
+dfbetas(model_animals1)
+```
+Let's now plot the results per coefficient.
+
+```{r dfbetas-animals-plot-intercept}
+intercept_beta = dfbetas(model_animals1)[,1]
+# main stands for main title
+plot(intercept_beta, main = "Intercept dfbetas")
+```
+```{r dfbetas-animals-plot-slope}
+# retrieving second column of the dfbetas tables
+slope_beta = dfbetas(model_animals1)[,2]
+# main stands for main title
+plot(slope_beta, main = "Slope dfbetas")
+```
+
+#### Question 31
+Describe what you see in the plots for Cook’s distance and DFBETAS. What do you conclude?
+
+In all three metrics (Cook's and dfbetas for the two model coefficients) observation index 26, the brachiosaurus, is outstanding and thus problematic to the model.
+
+#### Question 32
+Delete the problematic observation that you found in Question 12 and store the dataset under a new name.
+
+```{r animal-data2}
+animals_data2 <- Animals[-26,]
+animals_data2
+```
+
+#### Question 33
+Fit the regression model where animals’ body weight is predicted by brain weight using the adjusted dataset and store it as model_animals2.
+
+```{r animal-model2}
+model_animals2 <- lm(body ~ brain,
+                     data = animals_data2)
+model_animals2
+```
+#### Question 34
+Compare the output to model_animals1 and describe the changes.
+
+```{r summary-animal-model1}
+summary(model_animals1)
+```
+
+```{r summary-animal-model2}
+summary(model_animals2)
+```
+
+`model_animals2` is the model estimated without the problematic high leverage. In comparison to `model_animals1` it presents some changes. First, the intercept value was previously 4316, and was significantly reduced to 810. Secondly, the brain predictor coefficient (slope here) changed in magnitude and direction, it was previously -0.065 and was increased to 0.685. Lastly, the standard errors decreased for both coefficients and the distribution of residuals is now in a narrower interval, previously going from -4316 to 82694, and now from -1653 to 10855.
+
+#### Question 35
+Run the plots for influential observations again on this new model and see if anything changes.
+
+```{r cook-animals2}
+cooks.distance(model_animals2) %>%
+  plot()
+```
+
+```{r dfbetas-animals2-plot-intercept}
+intercept_beta2 = dfbetas(model_animals2)[,1]
+
+plot(intercept_beta2, main = "Intercept dfbetas")
+```
+
+```{r dfbetas-animals2-plot-slope}
+slope_beta2 = dfbetas(model_animals2)[,2]
+plot(slope_beta2, main = "Slope dfbetas")
+```
+
+There are apparently new influential observations, which are visible because the scale of the plots changed with the removal of the brachiosaurus.
+Let's investigate these observations.
+```{r checking-influential2}
+animals_data[c(6, 7, 15, 16),]
+```
+
+These observations represent very heavy animals. Other solutions than that of removing them from the dataset, would be using a robust regression `rlm()` which can estimate the model even in the presence of influential points by weighting the observations differently. Another solution is transforming the data, for example, generating the log() of the weights, since the relation of the variables is not linear because of these influential observations, as seen in the plot below. 
+
+```{r linearity-weights}
+ggplot(data = animals_data2, 
+       aes(x = body,
+           y = brain)) +
+  geom_point() +
+  geom_smooth() + 
+  labs(x = "Body weight",
+       y = "Brain weight",
+       title = "Relation between body and brain weights") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
