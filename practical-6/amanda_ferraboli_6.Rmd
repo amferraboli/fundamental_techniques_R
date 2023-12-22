@@ -1,0 +1,131 @@
+---
+title: "Practical 6 - GLM (Fundamental Techniques in Data Science with R)"
+author: "Amanda Ferraboli"
+date: "2023-12-18"
+output: 
+  html_document:
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+## Introduction
+In this practical, you will perform regression analyses using `glm()` and inspect variables by plotting these variables, using `ggplot()`.
+
+```{r packages}
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(foreign)
+library(kableExtra)
+library(janitor)
+library(readr)
+```
+
+## Logistic regression
+The glm() function is used to specify several different models, among which the logistic regression model. The logistic regression model can be specified by setting the family argument to “binomial”. You can save a model in an object and request summary statistics with the summary() command.
+
+For logistic regression, it important to know and check what category the predicted probabilities refer to, so you can interpret the model and it’s coefficients correctly. If your outcome variable is coded as a factor, the glm() function predicts the 2nd category, which is by default the alphabetical latter one. For example, if the categories are coded as 0 and 1, the probability of belonging to “1” is predicted by the model.
+
+## Working with odds and log-odds
+Before we get started with logistic modelling it helps to understand how odds, log-odds, and probability are related. Essentially, they are all just different expressions of the same thing and converting between them involve simple formulas.
+
+Coefficients calculated using the glm() function returns log-odds by default. Most of us find it difficult to think in terms of log-odds, so instead we convert them to odds (or odds-ratios) using the exp() function. If we want to go from odds to log-odds, we just take the logarithm using log().
+
+An odds-ratio is the probability of success and is defined as Odds=P/1−P, where P is the probability of an event happening and 1−P is the probability that it does not happen.
+
+The code below creates a data frame called data with a column called conc showing the number of trials wherein different concentrations of the peptide-C protein inhibited the flow of current across a membrane. The yes column contains counts of trials where this occured.
+
+```{r conc-peptide}
+data <- data.frame(conc = c(0.1, 0.5, 1, 10, 20, 30, 50, 70, 80, 100, 150),
+                   no = c(7, 1, 10, 9, 2, 9, 13, 1, 1, 4, 3),
+                   yes = c(0, 0, 3, 4, 0, 6, 7, 0, 0, 1 ,7)
+) 
+
+data
+```
+
+### Question 1
+Add the following variables to the dataset:
+- the total number of trials for each observation (i.e., the sum of the no and yes trials for each row)
+- the proportion of yes trials in each row (i.e. yes divided by the total)
+- the log-odds of inhibition for each row (i.e. the log-odds of yes vs no)
+
+```{r new_variables}
+data <- data %>% 
+  mutate(
+  total = no + yes,
+  yes_prop = yes / total,
+  log_odds = log(yes_prop/(no/total))
+)
+```
+
+### Question 2
+Inspect the new columns. Do you notice anything unusual?
+```{r inspect-data}
+head(data)
+```
+From the first 6 rows it is possible to see values of infinity in the log-odds column. Zeroes in the proportions of yes trials make the odds-ratio zero, the log of zero is undefined, thus generating infinity. This is a problem because many functions will not work if any input value is infinite. To fix this issue, a constant can be added to the yes/no columns to maintain the difference and relation between them in the odds, but avoid the zeroes in proportion. 
+
+### Question 3
+Add a new column to your dataset containing the corrected odds.
+You can compute the value of this column using the following formulation of the log-odds:
+
+log(odds)=log(yes + 0.5/ no + 0.5)
+
+```{r correct-log-odds}
+add_constant_log_odds <- function(x, y, constant = 0.5){
+  log((x + constant) / (y + constant))
+}
+
+data <- data %>%
+  mutate(
+    log_odds_05 = add_constant_log_odds(yes, no),
+    log_odds_1 = add_constant_log_odds(yes, no, constant = 1))
+
+data
+```
+Experimenting with a constant of value 0.5 and 1, the constant of 0.5 results in log-odds closer to the original values (`log_odds`). 
+
+### Question 4
+Fit a logistic regression model where:
+- `prop` is the outcome
+- `conc` is the only predictor
+- the number of total trials per row are used as weights (we need this because a different number of trials can go into defining each observation of `prop`)
+Interpret the slope estimate.
+
+```{r log-regression}
+log_model <- glm(yes_prop ~ conc,
+                 family = binomial,
+                 weights = total,
+                 data = data)
+
+summary(log_model)
+```
+The slope estimate for this model is 0.01215, the estimate for the only predictor `conc`. It means one unit increase in `conc` significantly increases the log-odds of inhibition (log-odds of yes vs no) by 0.01215. 
+
+To interpret the value in odds instead of log odds, the exponentiation can be used. The results are multiplicative effects.
+```{r exp-log-odds}
+coef(log_model) %>% exp()
+```
+
+For every unit increase in `conc`, the odds of inhibition (odds ratio of yes vs no) is 1.0122 higher. As it is a value greater than one, it indicates the effect is positive on inhibition.
+
+## Titanic data
+You will work with the titanic data set which you can find in the surfdrive folder, containing information on the fate of passengers on the infamous voyage.
+
+- `Survived`: this is the outcome variable that you are trying to predict, with 1 meaning a passenger survived and 0 meaning they did not
+- `Pclass`: this is the ticket class the passenger was travelling on, with 1, 2, and 3 representing 1st, 2nd and 3rd class respectively
+- `Age`: this is the age of the passenger in years
+- `Sex`: this is the sex of the passenger, either male or female
+
+### Question 5
+Read in the data from the “titanic.csv” file, selecting only the variables `Survived`, `Pclass`, `Sex` and `Age`. If necessary, correct the class of the variables.
+
+
+
+
