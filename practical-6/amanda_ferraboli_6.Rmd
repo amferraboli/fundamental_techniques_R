@@ -126,6 +126,325 @@ You will work with the titanic data set which you can find in the surfdrive fold
 ### Question 5
 Read in the data from the “titanic.csv” file, selecting only the variables `Survived`, `Pclass`, `Sex` and `Age`. If necessary, correct the class of the variables.
 
+```{r read-titanic-data}
+titanic <- read.csv("titanic.csv")
+head(titanic)
+```
+The variables `Sex`, `Pclass` and `Survived` do not have the appropriate class. From the header of the table it is possible to see `Pclass` and `Survived` are treated as integer variables, when they actually symbolize categories. `Sex` is a character variable and to be correctly used by the model should also be changed. The three variables will be converted to factor variables.
+
+```{r factorize-variables}
+titanic <- titanic %>%
+  mutate_at(c("Sex", "Pclass", "Survived"), as.factor)
+
+head(titanic)
+```
+
+### Question 6
+What relationships do you expect to find between the predictor variables and the outcome?
+
+`Survived` is the outcome variable, it is expected that the higher the `Pclass`, being 1 the first and highest class, the higher is the probability of survival. Concerning `Sex` it is expected that women have a higher probability of surviving. Finally, concerning `Age` the expectation might be ambiguous. There might be a higher probability of children surviving, but there might also have been a priority for elderly people. As of in the beginning of the 1900's there were not many very old people, the reported expected relation between surviving and age is the younger the passenger, the higher the probability of survival.
+
+### Question 7
+Investigate how many passengers survived in each class. You can do this visually by creating a bar plot, or by using the table() function. Search ??table for more information.
+
+```{r survival-per-class}
+titanic %>% 
+  ggplot(aes(Pclass, fill = Survived)) +
+  geom_bar() +
+  theme_minimal()
+```
+
+It is possible to improve the plot by unstacking the columns.
+
+```{r survival-per-class-unstack}
+titanic %>% 
+  ggplot(aes(Pclass, fill = Survived)) +
+  geom_bar(position = "dodge") +
+  labs(x = "Class",
+       y = "Count") +
+  theme_minimal()
+```
+
+After accounting for the exact number of passengers who survived of not, it is also interesting to understand the relative proportions. The argument position can be used to accomplish this task.
+
+```{r survival-per-class-unstack-prop}
+titanic %>% 
+  ggplot(aes(Pclass, fill = Survived)) +
+  geom_bar(position = "fill") +
+  labs(x = "Class",
+       y = "Count") +
+  theme_minimal()
+```
+
+From all passengers of 1st class, approximately 62% survived. From 2nd class the survival rate is a bit less than 50%; and for the 3rd class, it is a bit less than 25%.
+
+These numbers can be confirmed by using the `table()` function.
+
+```{r table-titanic-class}
+options(digits=3)
+prop.table(table(titanic$Pclass, titanic$Survived),
+           margin = 1)
+# margin = 1 uses proportions by row; margin = 2, by column
+```
+### Question 8
+Similarly, investigate the relationship between survival and sex by creating a bar plot and a table.
+
+```{r survival-per-sex-unstack}
+titanic %>% 
+  ggplot(aes(Sex, fill = Survived)) +
+  geom_bar(position = "dodge") +
+  labs(x = "Sex",
+       y = "Count") +
+  theme_minimal()
+```
+```{r survival-per-class-unstack-prop2}
+titanic %>% 
+  ggplot(aes(Sex, fill = Survived)) +
+  geom_bar(position = "fill") +
+  labs(x = "Class",
+       y = "Count") +
+  theme_minimal()
+```
+
+```{r table-titanic-sex}
+prop.table(table(titanic$Sex, titanic$Survived),
+           margin = 1)
+# margin = 1 uses proportions by row; margin = 2, by column
+```
+
+Both is absolute and in relative terms, women are more likely to survive. Almost 250 women survived, while only 100 men survived. These numbers correspond to a proportion of 74% among women, and 19% among men. 
+
+### Question 9
+Investigate the relationship between age and survival by creating a histogram of the age of survivors versus non-survivors.
+```{r survival-per-age-hist}
+titanic %>% 
+  ggplot(aes(Age, fill = Survived)) +
+  geom_histogram() +
+  labs(x = "Age",
+       y = "Count") +
+  facet_wrap(~Survived) +
+  theme_minimal()
+```
+
+The distribution of the people who survived, shown in blue in the plot, has a clear concentration on the left tail of the distribution, compared to the red distribution (passengers who did not survive). It means younger people have higher chances of survival compared to passengers of other ages.
+
+## No predictors
+
+### Question 10
+Specify a logistic regression model where “Survived” is the outcome and there are no predictors.
+```{r no-predictor}
+no_predictors <- glm(Survived ~ 1, 
+    family = binomial,
+    data = titanic)
+
+summary(no_predictors)
+```
+A logistic regression without predictors will return only the intercept estimate, it can be compared with more complex models. The estimate for the intercept is -0.4733 and is interpreted as the log-odds of survival for all passengers (all population).
+The log-odds ratio can be generated from the data to confirm if it indeed matches the value of the estimate.
+
+```{r table-survival}
+titanic %>% 
+count(Survived)
+```
+
+```{r log-odds}
+#log-odds survuval = log(odds yes/odds no)
+odds_yes <- 342 / (342 + 549)
+odds_no <- 549 / (342 + 549)
+log_odds_survival <- log(odds_yes/odds_no)
+
+log_odds_survival
+```
+The value of the intercept estimate is the log-odds ratio for survival for all passengers.
+
+## Binary predictor
+### Question 11
+Specify a logistic regression model where “Survived” is the outcome and “Sex” is the only predictor.
+
+```{r sex-predictor}
+sex_predictor_model <- glm(Survived ~ Sex, 
+    family = binomial,
+    data = titanic)
+
+summary(sex_predictor_model)
+```
+### Question 12
+What does the intercept mean? What are the odds and what are the log-odds of survival for males?
+
+The intercept corresponds to the log-odds of survival for women (the reference group), it is 1.057
+
+The log-odds survival for males is -2.514 lower than for women. To estimate the odds of survival, one can exponentiate the log-odds.
+```{r exp-log-odds2}
+exp(sex_predictor_model$coefficients)
+1 - 0.081
+```
+The odds of survival for males is 0.081, 92% lower than females.
+
+## Categorical predictor (more than 2 categories)
+### Question 13
+Specify a logistic regression model where “Survived” is the outcome and “Pclass” is the only predictor.
+
+```{r cat-predictors}
+cat_predictor_model <- glm(Survived ~ Pclass, 
+    family = binomial,
+    data = titanic)
+
+summary(cat_predictor_model)
+```
+
+### Question 14
+Which category is the reference group? What are their odds of survival?
+
+The reference group is the first class, the class for which a dummy is not created and is represented in the intercept estimate.
+The log-odds of survival for first class passengers is 0.531.
+
+```{r exp-pclass-model}
+exp(cat_predictor_model$coefficients)
+```
+The odds of survival for first class passengers is 1.70, 70% more likely to survive than other classes.
+
+### Question 15
+What are the chances of survival for 2nd and 3rd class passengers?
+
+2nd class passengers have log-odds of survival of -0.639 and odds of 0.528, meaning that the odds of survival decrease by (1 - 0.528), which is 0.472, or 47% compared to 1st class passengers. 
+3rd class passengers have log-odds of survival of -1.670 and odds of 0.188, meaning that the odds of survival decrease by (1 - 0.188), which is 0.812, or 81% compared to 1st class passengers.
+
+## Continuous predictor
+### Question 16
+Specify a logistic regression model where “Survived” is the outcome and “Age” is the only predictor.
+
+```{r cont-predictor}
+cont_predictor_model <- glm(Survived ~ Age, 
+    family = binomial,
+    data = titanic)
+
+summary(cont_predictor_model)
+```
+```{r cont-predictor-exp}
+exp(cont_predictor_model$coefficients)
+```
+
+### Question 17
+What does the intercept mean when there is a continuous predictor?
+
+The intercept when the predictors are continuous represent the log-odds of when all predictors have a value of zero. In the case of the model above, the intercept of -0.14327 represents the log-odds of survival when age is zero.
+
+### Question 18
+How are the odds and log-odds interpreted for a continuous predictor?
+
+In the case of a continuous predictor, for every unit increase in the predictor the log-odds for the outcome increase or decrease. This log-odd can be exponentiated to generate the odds. In the case of the estimated model above, for every increase of one year of age, the log odds are lower by -0.011 and the chances of survival decrease. Likewise, for every increase of one year of age, the odds are 0.989, or 1.1% lower, if compared to passengers with one year less.
+
+## Multinomial model with an interaction term
+### Question 19
+Specify a logistic regression model Survived is the outcome and Pclass plus an interaction between Sex and Age as the predictor.
+Save this model as we will return to it later.
+
+```{r interaction}
+interaction_model <- glm(Survived ~ Pclass + Sex*Age, 
+    family = binomial,
+    data = titanic)
+
+summary(interaction_model)
+```
+### Question 20
+How is the significant interaction term interpreted in this model?
+The interaction term is testing if the effect of age on survival is different in men and women. The result is a significant term, which means the slopes for survival (y) on age are significantly different for each level of sex.  
+
+## Model fit
+
+Model selection is an important step and there are several metrics for assessing model fit to help us select the best performing model. We will use deviance and information criterion to compare the fit of two models you saved before: fit1 and fit2.
+
+### Deviance
+Deviance is measure of the goodness-of-fit in a GLM where lower deviance indicates a better fitting model. R reports two types of deviance:
+
+- null deviance: how well the outcome is predicted by the intercept-only model
+- residual deviance: how well the outcome is predicted by the model with the predictors added
+
+### Question 21
+Get the model summaries and indicate what the null and residual deviance are.
+
+```{r model-deviance}
+summary(cont_predictor_model)
+```
+```{r model-deviance2}
+summary(interaction_model)
+```
+The null deviance does not change between the models, it is 1186.7 in the first model and 1186.66 in the model with interaction. The residual is 1182.3 in the first model and decreases to 793.82 in the model with interaction. 
 
 
+We can use the anova() function to perform an analysis of deviance that compares the difference in deviances between competing models.
 
+### Question 22
+Compare the fit of model 1 with the fit of model 2 using anova() and test = “Chisq”`.
+
+```{r model-anova}
+anova(cont_predictor_model, interaction_model, test = "Chisq")
+```
+The analysis of deviance can compare the differences in deviance for the models and test for its significance. It is possible to see in the table the reduction in residual deviance of 388 from model 1 to model with interaction. That difference is statistically significant and indicates a better fit of the model with the interaction term (model 2).
+
+### Information criteria
+AIC is the Akaike’s Information Criterion, a method for assessing model quality through comparison of related models. AIC is based on the deviance but introduces a penalty for more complex models. The number itself is not meaninful, and it is only useful when comparing models against one another. Like deviance, the model with the lowest AIC is best.
+
+### Question 23
+Use the AIC() function to get the AIC value for model 1 and model 2.
+```{r aic}
+AIC(cont_predictor_model, interaction_model)
+```
+The AIC for the model with interaction term (model 2) is lower, an indication of better fit than the first model.
+
+
+BIC is the Bayesian Information Criterion and is very similar to AIC, but penalises a complex model more than the AIC would. Complex models will have a larger score indicating worse fit. One difference to the AIC is that the probability of selecting the correct model with the BIC increases as the sample size of the training set increases.
+
+### Question 24
+Use the BIC() function to get the BIC value for model 1 and model 2.
+```{r bic}
+BIC(cont_predictor_model, interaction_model)
+```
+The BIC for the model with interaction term (model 2) is lower, an indication of better fit than the first model.
+
+### Question 25
+Which model should we proceed with?
+Model 2, with the interaction term should be picked since it has a statistically significant lower residual deviance, lower AIC and lower BIC.
+
+## Predicted probabilites
+### Question 26
+Use the predict() function to generate predicted probabilities for the multivariate logistic model. predict() takes the following arguments:
+- object, i.e. the logistic model
+- newdata, i.e. a data set where we want to predict the outcome (we will use titanic)
+- type, i.e. can be "logit" for log-odds or "response" for probabilities (we will use type = "response")
+- se.fit, i.e. set to TRUE to estimate the standard error of the probabilities
+Remember to save the output to an object.
+
+```{r predict}
+predictions <- data.frame(predict(object = interaction_model,
+                                  newdata = titanic,
+                                  type = "response",
+                                  se.fit = TRUE))
+```
+
+### Question 27
+Add the predicted probabilities and standard errors to the data set.
+```{r predicted-prob-se}
+# inspect arguments available by typing model + $
+titanic$pred_probs <- predictions$fit
+titanic$se    <- predictions$se.fit
+```
+
+### Question 28
+Calculate the confidence intervals for the predicted probabilities and add them to the data.
+```{r predicted-ci}
+titanic <- titanic %>% 
+  mutate(ci_lower = pred_probs - 1.96 * se, 
+         ci_upper = pred_probs + 1.96 * se)
+head(titanic)
+```
+
+```{r plot-data}
+  ggplot(aes(x = Age, y = pred_probs), data = titanic) + 
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, fill = Pclass), alpha = 0.1) +
+    geom_line(aes(color = Pclass)) + 
+    labs(y = "Probability of Survival",
+         x = "Age") +
+    theme_minimal() +
+    facet_wrap(vars(Sex))
+```
