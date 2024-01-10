@@ -1,0 +1,251 @@
+---
+title: "Practical 7 - Assumptions of logistic regression and evaluating classification (Fundamental Techniques in Data Science with R)"
+author: "Amanda Ferraboli"
+date: "2024-01-09"
+output: 
+  html_document:
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+## Introduction
+
+We will use the following packages in this practical:
+
+- `dplyr` for manipulation
+- `magrittr` for piping
+- `readr` for reading data
+- `ggplot` for plotting
+- `kableExtra` for tables
+- `pROC`, `regclass`, and `caret` for model diagnostics
+
+```{r packages}
+library(dplyr)
+library(magrittr)
+library(readr)
+library(ggplot2)
+library(kableExtra)
+library(pROC)
+library(regclass)
+library(caret)
+```
+
+## Loading the data
+In this practical, you will perform logistic regression analyses again using glm() and discuss model assumptions and diagnostics `titanic` data set.
+
+### Question 1
+Read in the data from the “titanic.csv” file, which we also used for the previous practical.
+
+```{r read-titanic-data}
+titanic <- read.csv("titanic.csv") %>%
+  mutate_at(c("Sex", "Pclass", "Survived"), as.factor)
+
+head(titanic)
+```
+Check columns classes.
+
+```{r str-columns}
+str(titanic)
+```
+## Logistic regression
+### Question 2
+Fit the following two logistic regression models and save them as `fit1` and `fit2`.
+
+- Survived ~ Pclass
+- Survived ~ Age + Pclass*Sex
+
+```{r logistic-models}
+fit1 <- glm(Survived ~ Pclass,
+            family = binomial,
+            data = titanic)
+
+fit2 <- glm(Survived ~ Age + Pclass*Sex,
+            family = binomial,
+            data = titanic)
+```
+
+## Model assumptions
+
+### Binary dependent variable
+The first outcome in a logistic regression is that the outcome should be binary and therefore follow a binomial distribution. This is easy to check: you just need to be sure that the outcome can only take one of two responses. You can plot the responses of the outcome variable to visually check this if you want. In our case, the possible outcomes are:
+
+- Survived (coded 1)
+- Did not survive (coded 0)
+
+### Question 3
+Visualise the responses of the outcome variable Survived using ggplot().
+
+```{r binary-dependent-variable}
+ ggplot(aes(x = Survived, fill = Survived), data = titanic) +
+  geom_bar() +
+  labs(y = "Count",
+       x = "Survived",
+       title = "Distribution of the outcome variable Survived") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+The outcome variable follows a binomial distribution, with only two outcomes observed.
+
+### Balanced outcomes
+If you are using logistic regression to make predictions/classifications then the accuracy will be affected by imbalance in the outcome classes. Notice that in the plot you just made there are more people who did not survive than who did survive. A possible consequence is reduced accuracy in classification of survivors.
+
+A certain amount of imbalance is expected and can be handled well by the model in most cases. The effects of this imbalance is context-dependent. Some solutions to serious class imbalance are down-sampling or weighting the outcomes to balance the importance placed on the outcomes by the model.
+
+### Sufficiently large sample size
+Sample size in logistic regression is a complex issue, but some suggest that it is ideal to have 10 cases per candidate predictor in your model. The minimum number of cases to include is `N = 10∗k/p`, where k is the number of predictors and p is the smallest proportion of negative or positive cases in the population.
+
+### Question 4 
+Calculate the minimum number of positive cases needed in the model fit1.
+
+Firstly, the proportion of minority class `p` should be calculated, this is to say, the proportion of people who survived.  
+
+```{r sample-size-prop}
+titanic %>% 
+  count(Survived) %>%
+  mutate(proportion = n / sum(n))
+```
+The class of people who survived is the smallest and minority, with only 38% (0.38).
+
+For model `fit1`, the number of predictors `k`can be retrieved as below.
+
+```{r predictors-fit1}
+length(coef(fit1))-1  # -1 for the intercept
+```
+
+It is now possible to used the previous presented formula `N = 10∗k/p`.
+
+```{r sample-size-fit1}
+round((10 * 2)/0.38)
+```
+The minimum number of positive cases needed in the model `fit1` is 53. Since there are 349 in the dataset, the sample size is large enough to meet the sample size computational requirement.
+
+### Predictor matrix is full-rank
+You learned about this assumption in the linear regression practicals, but to remind you:
+
+- there need to be more observations than predictors (n > P)
+- there should be no multicollinearity among the linear predictors
+
+### Question 5
+Check that there is no multicollinearity in the logistic model.
+
+Multicollinearity can be checked using the VIF(Variance Inflation Factor) function. The VIF, according to its own function description, helps in the assessment of when a predictor is more related to other predictors than it is to the response. The VIF of a predictor is a measure for how easily it is to predict this predictor by using the other predictors. As a rule of thumb, VIF larger than 10 indicates a problem.
+
+Model `fit1` cannot be checked using the VIF since it contains only one term. Model `fit2` can be assessed using the VIF.
+
+```{r multicollinearity}
+VIF(fit2)
+```
+For categorical predictors the column "GVIF^(1/(2*Df))" should be analyzed. From the table above, no multicollinearity problem is detected.
+
+### Continuous predictors are linearly related to the logit(π)
+
+Logistic regression models assume a linear relationship between predictor variables and the logit of the outcome variable. This assumption is mainly concerned with continuous predictors. Since we only have one continuous predictor (`Age`) we can plot the relationship between `Age` and the logit of `Survived`.
+
+### Question 6
+Get the predicted values of fit2 on the logit scale and bind them to the titanic data.
+
+The value in logit scale is the value returned by the function f(y) of logistic regression. When using the `predict()` function, argument `type = "link"` returns the log-odds in the logistic model, the logit scale we are interested in. While type = "response" returns the probabilities in the logistic model.
+
+```{r logit-scale}
+titanic$logit_fit2 <- predict(fit2, type = "link")
+```
+
+### Question 7
+Plot the relationship between Age and logit and interpret it.
+
+```{r relation-age-logit}
+ggplot(aes(x = Age, y = logit_fit2), data = titanic) +
+  geom_point() +
+  geom_smooth(method = "glm") +
+  labs(y = "Logit",
+       x = "Age",
+       title = "Relationship between Age and logit") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+There is a visible linear negative relationship between Age and the logit: as age increases, the log-odds of survival decrease.
+
+The condition could also be inspected through the residuals vs fitted plot, which should ideally show a flat tendency. 
+
+```{r residuals-vs-fitted}
+plot(fit2, 1)
+```
+### Question 8
+How should we deal with variables that are not linearly related to the logit?
+
+Variables not linearly related to the logit could be transformed into linear form. Likewise for linear regression, applying transformations with logarithms, powers or roots.
+
+### No influential values or outliers
+Influential values are extreme individual data points that can affect the fit1 of the logistic regression model. They can be visualised using Cook’s distance and the Residuals vs Leverage plot.
+
+### Question 9
+Use the plot() function to visualise the outliers and influential points of fit2.
+Hint: you need to specify the correct plot with the which argument. Check the lecture slides or search ??plot if you are unsure.
+
+```{r influential-obs-cook}
+plot(fit2, which = 4)
+```
+Plot `which = 4` of `plot()` function returns the Cook's distance estimator, highlighting the three largest values, which are potential problematic influential points. This can be confirmed by plotting the residuals vs Leverage plot, obtained by using `which = 5`. 
+
+```{r influential-obs-cook}
+plot(fit2, which = 5)
+```
+### Question 10
+Are there any influential cases in the Leverage vs Residuals plot? If so, what would you do?
+
+In the Residuals vs Leverage plot, the x-axis shows the leverage of each point, that is to say, the extend to which the estimators in the regression model would change if the corresponding observation was removed. High leverage meaning strong influence on the estimators of the model. The y-axis the standardized residual. If an observation is outside the Cook's distance line (gray dashed line), it is considered an influential observation.
+Observation 298 is the one closer to the x-axis and the border of Cook's line, but still, it is not outside of it. Thus, it is possible to say there are no influential cases in the plot. 
+In the hypothesis that there were influential observations, some alternatives could be tested to solve the problem. Good practice is to verify the point is not an error and correcting it; or replace the observation with a more realistic value; or if the model fits well except for the one observation, remove the influential observation. Finally, in cases where the influential observation cannot be removed, it could be kept but the finding mentioned in the results.
+
+### Differences to linear regression
+Lastly, it is important to note that the assumptions of a linear regression do not all map to logistic regression. In logistic regression, we do not need:
+
+- constant, finite error variance
+- normally distributed errors
+
+However, deviance residuals are useful for determining if the individual points are not fit1 well by the model.
+
+Hint: you can use some of the code from the lecture for the next few questions.
+
+### Question 11
+Use the resid() function to get the deviance residuals for fit2.
+```{r deviance-residuals}
+dev_res <- resid(fit2, type = "deviance")
+```
+
+### Question 12
+Compute the predicted logit values for the model.
+```{r pred-logit}
+pred_logit <- predict(fit2, type = "link")
+```
+
+### Question 13
+Plot the deviance residuals.
+```{r dev-res-logit-bind}
+dev_res_data <- data.frame(residuals = dev_res, 
+                           pred_logit = pred_logit)
+```
+```{r dev-res-plot}
+ggplot(aes(x = pred_logit, y = residuals),
+       data = dev_res_data) + 
+  geom_point() +
+  geom_smooth() +
+  labs(title = "Deviance residuals") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+Pearson residuals can also be useful in logistic regression. They measure deviations between the observed and fit1ted values. Pearson residuals are easier to plot than deviance residuals as the plot() function can be used.
+
+### Question 14
+Plot the pearson residuals for the model.
+```{r pearson-resid}
+plot(fit2, which = 1)
+```
+
+## Predicted probabilities
+In last week’s practical, you learned how to use the predict() function to calculate predicted probabilites using the models. This week we will create predicted probabilities for the final two models from last week compare the results by using the confusion matrix.
