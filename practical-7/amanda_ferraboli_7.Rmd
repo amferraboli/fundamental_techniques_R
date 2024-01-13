@@ -1,8 +1,9 @@
 ---
-title: "Practical 7 - Assumptions of logistic regression and evaluating classification (Fundamental Techniques in Data Science with R)"
+title: "Practical 7 - Assumptions of logistic regression and evaluating classification
+  (Fundamental Techniques in Data Science with R)"
 author: "Amanda Ferraboli"
 date: "2024-01-09"
-output: 
+output:
   html_document:
     toc: yes
     toc_depth: 4
@@ -89,6 +90,7 @@ Visualise the responses of the outcome variable Survived using ggplot().
   theme_minimal() + 
   theme(plot.title = element_text(hjust = 0.5))
 ```
+
 The outcome variable follows a binomial distribution, with only two outcomes observed.
 
 ### Balanced outcomes
@@ -168,6 +170,7 @@ ggplot(aes(x = Age, y = logit_fit2), data = titanic) +
   theme_minimal() + 
   theme(plot.title = element_text(hjust = 0.5))
 ```
+
 There is a visible linear negative relationship between Age and the logit: as age increases, the log-odds of survival decrease.
 
 The condition could also be inspected through the residuals vs fitted plot, which should ideally show a flat tendency. 
@@ -175,6 +178,7 @@ The condition could also be inspected through the residuals vs fitted plot, whic
 ```{r residuals-vs-fitted}
 plot(fit2, 1)
 ```
+
 ### Question 8
 How should we deal with variables that are not linearly related to the logit?
 
@@ -190,11 +194,13 @@ Hint: you need to specify the correct plot with the which argument. Check the le
 ```{r influential-obs-cook}
 plot(fit2, which = 4)
 ```
+
 Plot `which = 4` of `plot()` function returns the Cook's distance estimator, highlighting the three largest values, which are potential problematic influential points. This can be confirmed by plotting the residuals vs Leverage plot, obtained by using `which = 5`. 
 
-```{r influential-obs-cook}
+```{r influential-obs-cook2}
 plot(fit2, which = 5)
 ```
+
 ### Question 10
 Are there any influential cases in the Leverage vs Residuals plot? If so, what would you do?
 
@@ -239,6 +245,7 @@ ggplot(aes(x = pred_logit, y = residuals),
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
 ```
+
 Pearson residuals can also be useful in logistic regression. They measure deviations between the observed and fit1ted values. Pearson residuals are easier to plot than deviance residuals as the plot() function can be used.
 
 ### Question 14
@@ -249,3 +256,105 @@ plot(fit2, which = 1)
 
 ## Predicted probabilities
 In last week’s practical, you learned how to use the predict() function to calculate predicted probabilites using the models. This week we will create predicted probabilities for the final two models from last week compare the results by using the confusion matrix.
+
+### Question 15
+Use the predict() function to get model predicted probabilities for fit1 and fit2.
+```{r model-preds}
+# type = "response" will return the probabilities
+pred_prob1 <- predict(fit1, type = "response")
+
+pred_prob2 <- predict(fit2, type = "response")
+
+```
+
+### Question 16
+Create model predicted classifications for survival, for fit1 and fit2.
+
+The threshold of 0.5 will be used for the classification of survival. 
+```{r class-survival}
+pred1 <- ifelse(pred_prob1 > 0.5, 1, 0)
+
+pred2 <- ifelse(pred_prob2 > 0.5, 1, 0)
+```
+
+## Confusion matrix
+
+### Question 17
+Create two confusion matrices (one each for each model) using the classifications from the previous question. You can use the table() function, providing the modeled outcome as the true parameter and the classifications as the pred parameter.
+
+```{r confusion-matrix-1}
+conmat1 <- table(pred = pred1,
+                 true = titanic$Survived)
+
+conmat1
+```
+```{r confusion-matrix-2}
+conmat2 <- table(pred = pred2,
+                 true = titanic$Survived)
+
+conmat2
+```
+### Question 18
+Based on the confusion matrices, which model do you think makes better predictions?
+
+There are 199 true positives and 505 true negatives for model `fit2`, while for model `fit1` there are 136 true positives and 469 true negatives; which means the predictions match the true values more often in model `fit2`. 
+On the other hand, model `fit1` has 206 false negatives and 80 false positives, while `fit2` has 143 false negatives and 44 false positives; which means the predictions are more often wrong in model `fit1`.
+In conclusion, model `fit2` makes better predictions.
+
+### Question 19
+Calculate the accuracy, sensitivity, and specificity, false positive rate, positive and negative predictive values from the confusion matrix of the model that makes the best predictions.
+
+The model that makes better predictions is `fit2`, so the metrics will be calculated for it.
+All the metrics use the 4 representations on the confusion matrix: the false negative, false positive, true negative and true positive. So the first step is to assign these values to an object.
+
+```{r assign-conf-matrix-values}
+TN <- conmat2[1, 1]
+FN <- conmat2[1, 2]
+TP <- conmat2[2, 2]
+FP <- conmat2[2, 1]
+```
+
+```{r class-metrics}
+tibble(
+  ACCURACY = (TP + TN) / (TP + TN + FP + FN),
+  SENSITIVITY = TP / (TP + FN),
+  SPECIFICITY = TN / (TN + FP),
+  FPR = FP / (TN + FP),
+  PPV = TP / (TP + FP),
+  NPV = TN / (TN + FN)
+  )
+```
+### Question 20
+Explain what the difference metrics mean in substantive terms?
+
+Accuracy is 0.79 and means 79% of the cases are correctly classified.
+
+Sensitivity is 0.58, meaning 58% of the positive events, in this case, survivals, were captured. 
+
+Specificity is 0.92 and means 92% of the negative events, in this case, deaths, were captured.
+
+The FPR (False Positive Rate) is 0.08 and means 8% of true negative events, deaths, were incorrectly classified as survivors. 
+
+The PPV (Positive Predicted Value) is 0.81 and means there is a 81% chance a survivor was correctly classified.
+
+Finally, the NPV (Negative Predicted Value) is 0.78 and means there is a 78% chance that a passenger who died was correctly classified.
+
+### Question 21
+What does it mean for a model to have such low specificity, but high sensitivity?
+
+Low specificity means that the negative events are not being well captured, in the case of our model, a great number of passengers who died would be predicted to survive, and FP would be high. 
+High sensitivity means that the positive events are being well captured, in the case of the model, most passengers who survived would be predicted to indeed survive, and TP would be high.
+
+
+The confusionMatrix() function from the caret package can do a lot of this for us. The function takes three arguments:
+
+- data - a vector of predicted classes (in factor form)
+- reference - a vector of true classes (in factor from)
+- positive - a character string indicating the ‘positive’ outcome. If not specified, the confusion matrix assumes that the first specified category is the positive outcome.
+You can type ??confusionMatrix into the console to learn more.
+
+```{r caret-conf-matrix}
+confusionMatrix(as.factor(pred2), 
+                reference = titanic$Survived, 
+                positive = "1")
+```
